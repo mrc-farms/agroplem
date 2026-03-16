@@ -11,17 +11,17 @@
   --bg: #1a2e1a;
   --surface: #243324;
   --surface2: #2c3e2c;
-  --border: rgba(255,255,255,0.09);
-  --border2: rgba(255,255,255,0.16);
-  --text: #e8f2e8;
-  --text2: #96b896;
-  --text3: #5a7a5a;
-  --green: #6dd96d; --green-bg: rgba(109,217,109,0.13); --green-light: #4db84d;
-  --blue: #6abffa; --blue-bg: rgba(106,191,250,0.13);
-  --amber: #f5cc55; --amber-bg: rgba(245,204,85,0.13);
-  --red: #f08080; --red-bg: rgba(240,128,128,0.13);
-  --teal: #4ddcba; --teal-bg: rgba(77,220,186,0.13);
-  --accent: #6dd96d; --accent-bg: rgba(109,217,109,0.13);
+  --border: rgba(255,255,255,0.12);
+  --border2: rgba(255,255,255,0.22);
+  --text: #f0f7f0;
+  --text2: #b0ccb0;
+  --text3: #7a9a7a;
+  --green: #6dd96d; --green-bg: rgba(109,217,109,0.15); --green-light: #4db84d;
+  --blue: #6abffa; --blue-bg: rgba(106,191,250,0.15);
+  --amber: #f5cc55; --amber-bg: rgba(245,204,85,0.15);
+  --red: #f08080; --red-bg: rgba(240,128,128,0.15);
+  --teal: #4ddcba; --teal-bg: rgba(77,220,186,0.15);
+  --accent: #6dd96d; --accent-bg: rgba(109,217,109,0.15);
   --radius: 8px; --radius-lg: 12px;
   --font: 'Segoe UI', system-ui, sans-serif;
   --mono: 'Cascadia Code','Consolas',monospace;
@@ -77,7 +77,7 @@ body{font-family:var(--font);font-size:14px;background:var(--bg);color:var(--tex
 .btn-danger:hover{background:rgba(248,113,113,0.15)}
 .table-wrap{overflow-x:auto;width:100%}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:10px 12px;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:0.5px solid var(--border);white-space:nowrap;background:rgba(255,255,255,0.02)}
+th{text-align:left;padding:10px 12px;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--green);border-bottom:0.5px solid var(--border);white-space:nowrap;background:rgba(109,217,109,0.06)}
 td{padding:10px 12px;border-bottom:0.5px solid var(--border);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,0.02)}
@@ -144,6 +144,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 .farm-add-btn{display:block;width:100%;text-align:left;padding:5px 10px;border-radius:var(--radius);border:0.5px dashed var(--border2);background:transparent;cursor:pointer;font-size:11px;color:var(--text3);font-family:var(--font);margin-top:4px;transition:all .15s}
 .farm-add-btn:hover{color:var(--green);border-color:var(--green)}
 .mob-bar-inline{display:none;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:0.5px solid var(--border);margin:-24px -28px 16px -28px}
+#mob-header{display:none}
 .mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);z-index:299}
 .mob-overlay.show{display:block}
 .cb-col{width:32px}
@@ -313,7 +314,6 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--gr
           Аналитика
         </div>
       </div>
-      <div class="sidebar-footer" id="conn-status">● Подключено</div>
       <div style="padding:10px 14px;border-top:0.5px solid var(--border)">
         <button class="btn btn-sm" style="width:100%;justify-content:center" onclick="exportFullReport()">📊 Полный отчёт Excel</button>
       </div>
@@ -496,7 +496,6 @@ function showSetupError(msg) {
 function startApp() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  if (demoMode) document.getElementById('conn-status').textContent = '● Демо-режим';
   initFarmUI();
   nav('animals');
 }
