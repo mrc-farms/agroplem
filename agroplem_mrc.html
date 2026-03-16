@@ -1,0 +1,3060 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>АгроПлем МРС</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<style>
+:root {
+  --bg: #1a2e1a;
+  --surface: #243324;
+  --surface2: #2c3e2c;
+  --border: rgba(255,255,255,0.12);
+  --border2: rgba(255,255,255,0.22);
+  --text: #f0f7f0;
+  --text2: #b0ccb0;
+  --text3: #7a9a7a;
+  --green: #6dd96d; --green-bg: rgba(109,217,109,0.15); --green-light: #4db84d;
+  --blue: #6abffa; --blue-bg: rgba(106,191,250,0.15);
+  --amber: #f5cc55; --amber-bg: rgba(245,204,85,0.15);
+  --red: #f08080; --red-bg: rgba(240,128,128,0.15);
+  --teal: #4ddcba; --teal-bg: rgba(77,220,186,0.15);
+  --accent: #6dd96d; --accent-bg: rgba(109,217,109,0.15);
+  --radius: 8px; --radius-lg: 12px;
+  --font: 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Cascadia Code','Consolas',monospace;
+  --shadow: 0 2px 16px rgba(0,0,0,0.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;margin:0;padding:0}
+body{font-family:var(--font);font-size:14px;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+#setup-screen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:var(--bg)}
+.setup-card{background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--radius-lg);padding:36px;max-width:480px;width:100%;box-shadow:var(--shadow)}
+.setup-logo{font-size:24px;font-weight:700;background:linear-gradient(135deg,var(--green),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
+.setup-sub{font-size:13px;color:var(--text2);margin-bottom:24px}
+.setup-steps{font-size:12px;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:14px;margin-bottom:20px;line-height:1.9;border:0.5px solid var(--border)}
+.setup-steps b{color:var(--text)}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
+.fg label{font-size:12px;color:var(--text2);font-weight:500}
+.fg input{padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--mono);transition:border-color .15s}
+.fg input:focus{outline:none;border-color:var(--accent)}
+#app{display:none;flex:1;overflow:hidden;width:100%}
+.layout{display:grid;grid-template-columns:220px 1fr;height:100vh;width:100%;max-width:100%}
+.sidebar{background:var(--surface);border-right:0.5px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;position:relative}
+.sidebar::before{content:'';position:absolute;top:0;left:0;right:0;height:200px;background:linear-gradient(180deg,rgba(99,102,241,0.07) 0%,transparent 100%);pointer-events:none;z-index:0}
+.logo{padding:18px 16px;border-bottom:0.5px solid var(--border);position:relative;z-index:1}
+.logo-name{font-size:15px;font-weight:700;background:linear-gradient(135deg,var(--green),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo-farm{font-size:11px;color:var(--text3);margin-top:3px}
+.nav-section{padding:8px 0;position:relative;z-index:1}
+.nav-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:6px 14px 2px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 14px;cursor:pointer;font-size:13px;color:var(--text2);border-left:2px solid transparent;transition:all .15s}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-bg);color:var(--green);border-left-color:var(--green);font-weight:500}
+.nav-icon{width:15px;height:15px;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:10px 14px;border-top:0.5px solid var(--border);font-size:11px;color:var(--text3);position:relative;z-index:1}
+.main{overflow-y:auto;padding:24px 28px;background:var(--bg);width:100%;min-width:0}
+.page-header{margin-bottom:22px}
+.page-header h1{font-size:20px;font-weight:700;letter-spacing:-0.02em}
+.page-header p{font-size:13px;color:var(--text2);margin-top:4px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.stat{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;transition:border-color .2s}
+.stat:hover{border-color:var(--border2)}
+.stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.stat-value{font-size:26px;font-weight:700;margin-top:4px;letter-spacing:-0.02em}
+.stat-value.green{color:var(--green)}.stat-value.blue{color:var(--blue)}.stat-value.amber{color:var(--amber)}.stat-value.red{color:var(--red)}.stat-value.teal{color:var(--teal)}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:16px;width:100%;box-sizing:border-box;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.card-title{font-size:14px;font-weight:600}
+.btn{padding:7px 15px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);cursor:pointer;font-size:13px;color:var(--text);font-family:var(--font);transition:all .15s}
+.btn:hover{background:var(--surface3);border-color:rgba(255,255,255,0.2)}
+.btn-primary{background:linear-gradient(135deg,var(--green-light),#16a34a);border-color:transparent;color:#000;font-weight:600}
+.btn-primary:hover{opacity:.88}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-danger{background:var(--red-bg);border-color:rgba(248,113,113,0.25);color:var(--red)}
+.btn-danger:hover{background:rgba(248,113,113,0.15)}
+.table-wrap{overflow-x:auto;width:100%}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--green);border-bottom:0.5px solid var(--border);white-space:nowrap;background:rgba(109,217,109,0.06)}
+td{padding:10px 12px;border-bottom:0.5px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.b-green{background:var(--green-bg);color:var(--green);border:0.5px solid rgba(74,222,128,0.2)}
+.b-blue{background:var(--blue-bg);color:var(--blue);border:0.5px solid rgba(96,165,250,0.2)}
+.b-amber{background:var(--amber-bg);color:var(--amber);border:0.5px solid rgba(251,191,36,0.2)}
+.b-red{background:var(--red-bg);color:var(--red);border:0.5px solid rgba(248,113,113,0.2)}
+.b-gray{background:var(--surface2);color:var(--text2);border:0.5px solid var(--border2)}
+.b-x{background:var(--surface2);color:var(--text2);border:0.5px solid var(--border2)}
+.modal{background:var(--surface);border-radius:var(--radius-lg);border:0.5px solid var(--border2);padding:22px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:0.5px solid var(--border)}
+.modal-title{font-size:16px;font-weight:600}
+.close-btn{background:var(--surface2);border:0.5px solid var(--border);cursor:pointer;font-size:16px;color:var(--text2);line-height:1;padding:4px 9px;border-radius:6px;transition:all .15s}
+.close-btn:hover{background:var(--surface3);color:var(--text)}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:0.5px solid var(--border)}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.form-group label{font-size:11px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.form-group input,.form-group select,.form-group textarea{padding:8px 11px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--font);transition:border-color .15s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
+.form-group textarea{min-height:70px;resize:vertical}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+.form-section{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 10px;padding-bottom:6px;border-bottom:0.5px solid var(--border)}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-row{text-align:center;padding:40px;color:var(--text2)}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.detail-item .dl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.detail-item .dv{font-weight:500;margin-top:3px;font-size:14px}
+.pedigree-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.ped-box{background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;transition:all .15s}
+.ped-box .pn{font-weight:500;font-size:13px}
+.ped-box .pm{font-size:11px;color:var(--text2);margin-top:2px}
+.ped-link:hover{border-color:var(--green)!important;box-shadow:0 0 12px rgba(74,222,128,0.12)!important}
+.progress{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;flex:1}
+.progress-fill{height:100%;border-radius:3px}
+.progress-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.progress-label{font-size:12px;color:var(--text2);width:140px;flex-shrink:0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.empty{text-align:center;padding:48px 20px;color:var(--text3)}
+.empty-icon{font-size:32px;margin-bottom:8px;opacity:.5}
+.bar-chart{display:flex;gap:8px;align-items:flex-end;height:130px;padding-top:8px}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}
+.bar-fill{width:100%;border-radius:3px 3px 0 0;transition:height .3s;min-height:2px}
+.bar-lbl{font-size:10px;color:var(--text3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+.bar-val{font-size:11px;font-weight:600}
+.alert{padding:10px 14px;border-radius:var(--radius);font-size:13px;margin-bottom:12px;border:0.5px solid}
+.alert-warning{background:var(--amber-bg);color:var(--amber);border-color:rgba(251,191,36,0.2)}
+.alert-info{background:var(--blue-bg);color:var(--blue);border-color:rgba(96,165,250,0.2)}
+.alert-success{background:var(--green-bg);color:var(--green);border-color:rgba(74,222,128,0.2)}
+.farm-switcher{padding:10px 12px;border-bottom:0.5px solid var(--border);position:relative;z-index:1}
+.farm-btn{display:flex;align-items:center;width:100%;text-align:left;padding:6px 10px;border-radius:var(--radius);border:none;background:transparent;cursor:pointer;font-size:12px;color:var(--text2);font-family:var(--font);margin-bottom:2px;transition:all .15s}
+.farm-btn:hover{background:var(--surface2);color:var(--text)}
+.farm-btn.active{background:var(--accent-bg);color:var(--green);font-weight:600}
+.farm-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;flex-shrink:0}
+.farm-row{display:flex;align-items:center;gap:2px;margin-bottom:2px}
+.farm-row:hover .farm-row-actions{opacity:1}
+.farm-row-actions{display:flex;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0}
+.farm-action-btn{background:none;border:none;cursor:pointer;font-size:12px;color:var(--text3);padding:2px 5px;border-radius:3px}
+.farm-action-btn:hover{background:var(--surface2);color:var(--text)}
+.farm-row .farm-btn{flex:1;margin-bottom:0}
+.farm-add-btn{display:block;width:100%;text-align:left;padding:5px 10px;border-radius:var(--radius);border:0.5px dashed var(--border2);background:transparent;cursor:pointer;font-size:11px;color:var(--text3);font-family:var(--font);margin-top:4px;transition:all .15s}
+.farm-add-btn:hover{color:var(--green);border-color:var(--green)}
+.mob-bar-inline{display:none;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:0.5px solid var(--border);margin:-24px -28px 16px -28px}
+#mob-header{display:none}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);z-index:299}
+.mob-overlay.show{display:block}
+.cb-col{width:32px}
+input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--green)}
+.bulk-bar{display:none;align-items:center;gap:10px;padding:8px 12px;background:var(--green-bg);border-radius:var(--radius);margin-bottom:10px;font-size:13px;color:var(--green);border:0.5px solid rgba(74,222,128,0.15)}
+.bulk-bar.show{display:flex}
+.animal-photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius);display:block}
+.photo-placeholder{width:100%;aspect-ratio:4/3;background:var(--surface2);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:var(--text3);font-size:12px;cursor:pointer;border:1.5px dashed var(--border2);transition:all .15s}
+.photo-placeholder:hover{border-color:var(--green);color:var(--green)}
+.photo-wrap{position:relative}
+.photo-wrap .photo-del{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;display:none}
+.photo-wrap:hover .photo-del{display:block}
+.imp-preview{background:var(--surface2);border-radius:var(--radius);padding:10px;font-size:12px;color:var(--text2);margin:8px 0;max-height:100px;overflow-y:auto;font-family:var(--mono);border:0.5px solid var(--border)}
+.prog-wrap{background:var(--surface2);border-radius:20px;height:7px;overflow:hidden;margin:8px 0}
+.prog-fill{height:100%;background:var(--green);border-radius:20px;transition:width .2s}
+.bot-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;background:var(--surface);border-top:0.5px solid var(--border);padding:6px 0 env(safe-area-inset-bottom,6px) 0}
+.bot-nav-items{display:flex;justify-content:space-around;align-items:center}
+.bot-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 8px;cursor:pointer;color:var(--text3);border:none;background:none;font-family:var(--font);min-width:48px;transition:color .15s}
+.bot-nav-item.on{color:var(--green)}
+.bot-nav-item svg{width:22px;height:22px}
+.bot-nav-item span{font-size:9px;font-weight:500}
+.bot-nav-more{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 8px;cursor:pointer;color:var(--text3);border:none;background:none;font-family:var(--font);min-width:48px}
+.bot-menu-overlay{display:none;position:fixed;inset:0;z-index:490;background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+.bot-menu-overlay.show{display:block}
+.bot-menu-sheet{display:none;position:fixed;bottom:0;left:0;right:0;z-index:495;background:var(--surface);border-radius:16px 16px 0 0;padding:16px 0 env(safe-area-inset-bottom,16px) 0;max-height:80vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.5)}
+.bot-menu-sheet.show{display:block}
+.bot-sheet-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px auto}
+.bot-sheet-item{display:flex;align-items:center;gap:14px;padding:13px 20px;cursor:pointer;font-size:14px;color:var(--text);transition:background .15s}
+.bot-sheet-item:hover,.bot-sheet-item:active{background:var(--surface2)}
+.bot-sheet-item.on{color:var(--green);font-weight:500}
+.bot-sheet-item svg{width:20px;height:20px;flex-shrink:0}
+.bot-sheet-sep{height:0.5px;background:var(--border);margin:6px 0}
+@media(max-width:900px){
+  .two-col{grid-template-columns:1fr}
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none;position:fixed;top:0;left:0;bottom:0;z-index:300;width:260px;box-shadow:4px 0 40px rgba(0,0,0,.7)}
+  .sidebar.mob-open{display:flex !important}
+  .main{padding:20px 12px 10px 12px}
+  .mob-bar-inline{display:flex !important;margin:-20px -12px 16px -12px}
+  .bot-nav{display:block}
+  .main{padding-bottom:70px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .card{padding:12px}
+  th,td{padding:7px 10px;font-size:12px}
+  .btn{padding:5px 10px;font-size:12px}
+  .btn-sm{padding:4px 8px;font-size:11px}
+  .page-header h1{font-size:16px}
+  .detail-grid{grid-template-columns:1fr 1fr}
+  .pedigree-grid{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .form-grid.cols3{grid-template-columns:1fr}
+  .bulk-bar{flex-wrap:wrap;gap:6px}
+  input[type=text],input[type=date],input[type=number],input[type=password],select,textarea{font-size:16px !important}
+  .farm-row-actions{opacity:1}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .stat-value{font-size:20px}
+}
+@media(min-width:901px){.mob-bar-inline{display:none !important}.bot-nav{display:none !important}}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div style="text-align:center;margin-bottom:16px">
+      <img src="https://i.imgur.com/c7uEfEe.jpg" alt="АгроПлем" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--green);box-shadow:0 4px 16px rgba(59,109,17,.25)">
+    </div>
+    <div class="setup-logo">АгроПлем МРС</div>
+    <div class="setup-sub">Система учёта МРС — подключение к базе данных</div>
+    <div class="setup-steps">
+      <b>Как настроить Supabase:</b><br>
+      1. Зайдите на <b>supabase.com</b> → создайте проект<br>
+      2. В SQL Editor выполните файл <b>schema.sql</b><br>
+      3. Скопируйте <b>Project URL</b> и <b>anon key</b> из Settings → API<br>
+      4. Вставьте ниже и нажмите «Подключить»
+    </div>
+    <div class="fg">
+      <label>Supabase Project URL</label>
+      <input id="sb-url" type="text" placeholder="https://xxxx.supabase.co" autocomplete="off">
+    </div>
+    <div class="fg">
+      <label>Supabase Anon Key</label>
+      <input id="sb-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIs..." autocomplete="off">
+    </div>
+    <div id="setup-error" style="color:var(--red);font-size:13px;margin-bottom:12px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%;padding:10px" onclick="connectSupabase()">Подключить</button>
+    <div style="margin-top:12px;text-align:center">
+      <button class="btn btn-sm" onclick="useDemoMode()" style="font-size:12px;color:var(--text2)">Демо-режим (без БД)</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <div style="display:flex;align-items:center;gap:10px">
+          <img src="https://i.imgur.com/c7uEfEe.jpg" alt="logo" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0">
+          <div>
+            <div class="logo-name">АгроПлем МРС</div>
+            <div class="logo-farm" id="farm-name">Хозяйство</div>
+          </div>
+        </div>
+      </div>
+      <div class="farm-switcher" id="farm-switcher"></div>
+      <div class="nav-section">
+        <div class="nav-label">Поголовье</div>
+        <div class="nav-item active" onclick="nav('animals')" id="nav-animals">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="8" r="3"/><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+          Животные
+        </div>
+        <div class="nav-item" onclick="nav('arrivals')" id="nav-arrivals">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v11M6 10l4 4 4-4"/><path d="M3 17h14"/></svg>
+          Прибытие
+        </div>
+        <div class="nav-item" onclick="nav('departures')" id="nav-departures">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 17V6M6 10l4-4 4 4"/><path d="M3 3h14"/></svg>
+          Убытие
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Воспроизводство</div>
+        <div class="nav-item" onclick="nav('matings')" id="nav-matings">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10h12M10 4v12"/><circle cx="4" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg>
+          Случки / Осеменение
+        </div>
+        <div class="nav-item" onclick="nav('ultrasounds')" id="nav-ultrasounds">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 9l2 2 4-4"/></svg>
+          Журнал УЗИ
+        </div>
+        <div class="nav-item" onclick="nav('births')" id="nav-births">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.3L10 14.2l-4.8 2.5.9-5.3L2.2 7.7l5.4-.8z"/></svg>
+          Окоты / Роды
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Продуктивность</div>
+        <div class="nav-item" onclick="nav('milk')" id="nav-milk">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2h6l2 4H5z"/><path d="M5 6l-1.5 11h13L15 6"/></svg>
+          Молочность
+        </div>
+        <div class="nav-item" onclick="nav('weights')" id="nav-weights">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.5 3h3l-2.5 2 1 3L10 8.5 7 10l1-3L5.5 5h3z"/><path d="M4 17h12M6 17v-4M10 17v-6M14 17v-3"/></svg>
+          Взвешивания
+        </div>
+        <div class="nav-item" onclick="nav('selection')" id="nav-selection">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.8 5.5H18l-4.9 3.5 1.9 5.7L10 13.2 5 16.7l1.9-5.7L2 7.5h6.2z"/></svg>
+          Племенной отбор
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Ветеринария</div>
+        <div class="nav-item" id="nav-vet" onclick="nav('vet')">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v14M3 10h14"/><circle cx="10" cy="10" r="8"/></svg>
+          Вет. журнал
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Анализ</div>
+        <div class="nav-item" onclick="nav('analytics')" id="nav-analytics">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 14l4-4 3 3 5-6"/><rect x="2" y="2" width="16" height="16" rx="2"/></svg>
+          Аналитика
+        </div>
+      </div>
+      <div style="padding:10px 14px;border-top:0.5px solid var(--border)">
+        <div id="conn-status" style="font-size:11px;color:var(--text2);margin-bottom:8px">● Подключено</div>
+        <button class="btn btn-sm" style="width:100%;justify-content:center" onclick="exportFullReport()">📊 Полный отчёт Excel</button>
+      </div>
+    </div>
+    <!-- Main content -->
+    <div class="main" id="main"></div>
+  </div>
+</div>
+
+<!-- Mobile header - outside layout so it never gets overwritten -->
+<div class="mob-header" id="mob-header">
+  <button class="mob-menu-btn" onclick="toggleMobMenu()">☰</button>
+  <div class="mob-title">АгроПлем МРС</div>
+  <div class="mob-farm" id="mob-farm-label">Хозяйство</div>
+</div>
+
+
+<!-- Bottom navigation for mobile -->
+<div class="bot-nav" id="bot-nav">
+  <div class="bot-nav-items">
+    <button class="bot-nav-item on" id="bn-animals" onclick="nav('animals')">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="8" r="3"/><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+      <span>Животные</span>
+    </button>
+    <button class="bot-nav-item" id="bn-matings" onclick="nav('matings')">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10h12M10 4v12"/><circle cx="4" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg>
+      <span>Случки</span>
+    </button>
+    <button class="bot-nav-item" id="bn-births" onclick="nav('births')">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.3L10 14.2l-4.8 2.5.9-5.3L2.2 7.7l5.4-.8z"/></svg>
+      <span>Окоты</span>
+    </button>
+    <button class="bot-nav-item" id="bn-vet" onclick="nav('vet')">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v14M3 10h14"/><circle cx="10" cy="10" r="8"/></svg>
+      <span>Вет.</span>
+    </button>
+    <button class="bot-nav-more" onclick="openBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="4" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/></svg>
+      <span style="font-size:9px;font-weight:500">Ещё</span>
+    </button>
+  </div>
+</div>
+
+<!-- Bottom sheet menu -->
+<div class="bot-menu-overlay" id="bot-overlay" onclick="closeBotSheet()"></div>
+<div class="bot-menu-sheet" id="bot-sheet">
+  <div class="bot-sheet-handle"></div>
+  <div style="padding:0 8px">
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:4px 12px 8px">Хозяйство</div>
+    <div id="bot-farm-list"></div>
+    <div class="bot-sheet-sep"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px">Разделы</div>
+    <div class="bot-sheet-item" onclick="nav('animals');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="8" r="3"/><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg> Животные
+    </div>
+    <div class="bot-sheet-item" onclick="nav('arrivals');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v11M6 10l4 4 4-4"/><path d="M3 17h14"/></svg> Прибытие
+    </div>
+    <div class="bot-sheet-item" onclick="nav('departures');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 17V6M6 10l4-4 4 4"/><path d="M3 3h14"/></svg> Убытие
+    </div>
+    <div class="bot-sheet-item" onclick="nav('matings');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10h12M10 4v12"/><circle cx="4" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg> Случки / Осеменение
+    </div>
+    <div class="bot-sheet-item" onclick="nav('ultrasounds');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 9l2 2 4-4"/></svg> Журнал УЗИ
+    </div>
+    <div class="bot-sheet-item" onclick="nav('births');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.3L10 14.2l-4.8 2.5.9-5.3L2.2 7.7l5.4-.8z"/></svg> Окоты / Роды
+    </div>
+    <div class="bot-sheet-item" onclick="nav('milk');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2h6l2 4H5z"/><path d="M5 6l-1.5 11h13L15 6"/></svg> Молочность
+    </div>
+    <div class="bot-sheet-item" onclick="nav('weights');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.5 3h3l-2.5 2 1 3L10 8.5 7 10l1-3L5.5 5h3z"/><path d="M4 17h12M6 17v-4M10 17v-6M14 17v-3"/></svg> Взвешивания
+    </div>
+    <div class="bot-sheet-item" onclick="nav('selection');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.8 5.5H18l-4.9 3.5 1.9 5.7L10 13.2 5 16.7l1.9-5.7L2 7.5h6.2z"/></svg> Племенной отбор
+    </div>
+    <div class="bot-sheet-item" onclick="nav('vet');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v14M3 10h14"/><circle cx="10" cy="10" r="8"/></svg> Вет. журнал
+    </div>
+    <div class="bot-sheet-item" onclick="nav('analytics');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 14l4-4 3 3 5-6"/><rect x="2" y="2" width="16" height="16" rx="2"/></svg> Аналитика
+    </div>
+  </div>
+</div>
+
+<!-- Modal container -->
+<div id="modal-root"></div>
+<div class="mob-overlay" id="mob-overlay" onclick="closeMobMenu()"></div>
+
+<script>
+// ============================================================
+// SUPABASE CLIENT
+// ============================================================
+let sbClient = null;
+let demoMode = false;
+let currentFarm = localStorage.getItem('current_farm') || 'luzino';
+
+function loadFarms() {
+  const saved = localStorage.getItem('farms_list');
+  if (saved) return JSON.parse(saved);
+  const defaults = [{id:'luzino',name:'Лузино'},{id:'shahovskaya',name:'Шаховская'},{id:'nazarovo',name:'Назарово'}];
+  localStorage.setItem('farms_list', JSON.stringify(defaults));
+  return defaults;
+}
+function saveFarms(list) { localStorage.setItem('farms_list', JSON.stringify(list)); }
+let FARMS_LIST = loadFarms();
+function getFarmsMap() { return Object.fromEntries(FARMS_LIST.map(f=>[f.id,f.name])); }
+const FARMS = new Proxy({}, { get: (_,k) => getFarmsMap()[k] || k });
+const FARM_COLORS = ['#3b6d11','#185fa5','#854f0b','#0f6e56','#a32d2d','#534ab7','#7a4609'];
+function farmColor(idx) { return FARM_COLORS[idx % FARM_COLORS.length]; }
+
+const DEMO_ANIMALS = [
+  {id:'a1',ear_tag:'МО-0041',name:'Зефир',sex:'М',breed:'Романовская',dob:'2023-03-12',weight_kg:38,color:'Серо-белый',mother_tag:'МО-0019',father_tag:'МО-0005',status:'active'},
+  {id:'a2',ear_tag:'МО-0042',name:'Бусинка',sex:'Ж',breed:'Романовская',dob:'2023-03-14',weight_kg:34,color:'Серо-белый',mother_tag:'МО-0020',father_tag:'МО-0005',status:'active'},
+  {id:'a3',ear_tag:'МО-0043',name:'Роза',sex:'Ж',breed:'Меринос',dob:'2023-05-05',weight_kg:36,color:'Белый',mother_tag:'МО-0021',father_tag:'МО-0008',status:'active'},
+  {id:'a4',ear_tag:'МО-0044',name:'Барон',sex:'М',breed:'Меринос',dob:'2023-05-07',weight_kg:42,color:'Белый',mother_tag:'МО-0022',father_tag:'МО-0008',status:'sold'},
+  {id:'a5',ear_tag:'МО-0045',name:'Лада',sex:'Ж',breed:'Романовская',dob:'2023-06-20',weight_kg:33,color:'Серый',mother_tag:'МО-0019',father_tag:'МО-0006',status:'active'},
+  {id:'a6',ear_tag:'МО-0046',name:'Ветер',sex:'М',breed:'Дорпер',dob:'2022-04-01',weight_kg:55,color:'Чёрно-белый',mother_tag:'МО-0010',father_tag:'МО-0002',status:'active'},
+  {id:'a7',ear_tag:'МО-0047',name:'Снежка',sex:'Ж',breed:'Романовская',dob:'2022-04-10',weight_kg:40,color:'Белый',mother_tag:'МО-0011',father_tag:'МО-0003',status:'active'},
+  {id:'a8',ear_tag:'МО-0048',name:'Малина',sex:'Ж',breed:'Меринос',dob:'2023-07-18',weight_kg:31,color:'Белый',mother_tag:'МО-0023',father_tag:'МО-0008',status:'active'},
+];
+const DEMO_ARRIVALS = [
+  {id:'ar1',animal_id:'a6',ear_tag:'МО-0046',name:'Ветер',arrival_date:'2022-04-10',source_type:'purchase',source_name:'ПЗ Восток',price:28000,weight_at_arrival:38,doc_number:'АК-0019'},
+  {id:'ar2',animal_id:'a7',ear_tag:'МО-0047',name:'Снежка',arrival_date:'2022-04-10',source_type:'purchase',source_name:'ПЗ Восток',price:14000,weight_at_arrival:28,doc_number:'АК-0020'},
+  {id:'ar3',animal_id:'a1',ear_tag:'МО-0041',name:'Зефир',arrival_date:'2023-03-12',source_type:'born',source_name:'Внутри хозяйства',price:null,weight_at_arrival:3.2,doc_number:''},
+];
+const DEMO_DEPARTURES = [
+  {id:'dp1',animal_id:'a4',ear_tag:'МО-0044',name:'Барон',departure_date:'2024-10-15',reason:'sale',destination:'ИП Смирнов К.А.',price:22000,weight_at_departure:60,doc_number:'ПД-0041'},
+];
+const DEMO_MATINGS = [
+  {id:'m1',female_id:'a2',female_name:'Бусинка',female_tag:'МО-0042',male_id:'a6',male_name:'Ветер',male_tag:'МО-0046',mating_date:'2024-09-15',method:'natural',expected_birth:'2025-02-12',season:'2024/2025'},
+  {id:'m2',female_id:'a3',female_name:'Роза',female_tag:'МО-0043',male_id:'a6',male_name:'Ветер',male_tag:'МО-0046',mating_date:'2024-09-18',method:'natural',expected_birth:'2025-02-15',season:'2024/2025'},
+  {id:'m3',female_id:'a5',female_name:'Лада',female_tag:'МО-0045',male_id:'a6',male_name:'Ветер',male_tag:'МО-0046',mating_date:'2024-09-20',method:'natural',expected_birth:'2025-02-17',season:'2024/2025'},
+  {id:'m4',female_id:'a7',female_name:'Снежка',female_tag:'МО-0047',male_id:'a6',male_name:'Ветер',male_tag:'МО-0046',mating_date:'2024-10-01',method:'natural',expected_birth:'2025-02-28',season:'2024/2025'},
+];
+const DEMO_ULTRASOUNDS = [
+  {id:'u1',animal_id:'a2',ear_tag:'МО-0042',name:'Бусинка',mating_id:'m1',exam_date:'2024-10-20',vet_name:'Иванова М.С.',result:'pregnant',fetus_count:2,gestation_days:35,expected_birth:'2025-02-12'},
+  {id:'u2',animal_id:'a3',ear_tag:'МО-0043',name:'Роза',mating_id:'m2',exam_date:'2024-10-22',vet_name:'Иванова М.С.',result:'pregnant',fetus_count:1,gestation_days:34,expected_birth:'2025-02-15'},
+  {id:'u3',animal_id:'a5',ear_tag:'МО-0045',name:'Лада',mating_id:'m3',exam_date:'2024-10-24',vet_name:'Иванова М.С.',result:'empty',fetus_count:0,gestation_days:34,expected_birth:null,notes:'Повторное осеменение 25.10'},
+  {id:'u4',animal_id:'a7',ear_tag:'МО-0047',name:'Снежка',mating_id:'m4',exam_date:'2024-11-05',vet_name:'Иванова М.С.',result:'pregnant',fetus_count:3,gestation_days:35,expected_birth:'2025-02-28'},
+];
+const DEMO_BIRTHS = [
+  {id:'b1',mother_id:'a2',mother_name:'Бусинка',mother_tag:'МО-0042',birth_date:'2025-02-09',lambs_born:2,lambs_alive:2,lambs_dead:0,birth_type:'normal',vet_assisted:false,mother_condition:'good',notes:'Оба ягнёнка здоровые'},
+  {id:'b2',mother_id:'a7',mother_name:'Снежка',mother_tag:'МО-0047',birth_date:'2025-02-28',lambs_born:3,lambs_alive:3,lambs_dead:0,birth_type:'normal',vet_assisted:false,mother_condition:'good',notes:'Тройня — редкий случай'},
+];
+const DEMO_MILK = [
+  {id:'ml1',animal_id:'a7',ear_tag:'МО-0047',name:'Снежка',record_date:'2025-03-01',lactation_no:3,volume_liters:2.1,fat_pct:6.5,protein_pct:5.3},
+  {id:'ml2',animal_id:'a2',ear_tag:'МО-0042',name:'Бусинка',record_date:'2025-03-01',lactation_no:2,volume_liters:1.8,fat_pct:6.2,protein_pct:5.1},
+  {id:'ml3',animal_id:'a3',ear_tag:'МО-0043',name:'Роза',record_date:'2025-03-01',lactation_no:1,volume_liters:1.4,fat_pct:5.8,protein_pct:4.9},
+  {id:'ml4',animal_id:'a8',ear_tag:'МО-0048',name:'Малина',record_date:'2025-03-01',lactation_no:1,volume_liters:1.2,fat_pct:5.6,protein_pct:4.8},
+];
+
+function connectSupabase() {
+  const url = document.getElementById('sb-url').value.trim();
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url || !key) { showSetupError('Заполните оба поля'); return; }
+  try {
+    const sb = window.supabase || window.Supabase;
+    if (!sb) { showSetupError('Библиотека не загрузилась — обновите страницу'); return; }
+    sbClient = sb.createClient(url, key);
+    localStorage.setItem('sb_url', url);
+    localStorage.setItem('sb_key', key);
+    startApp();
+  } catch(e) { showSetupError('Ошибка: ' + e.message); }
+}
+
+function useDemoMode() {
+  demoMode = true;
+  startApp();
+}
+
+function showSetupError(msg) {
+  const el = document.getElementById('setup-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function startApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  const cs = document.getElementById('conn-status');
+  if (cs) cs.textContent = demoMode ? '⚪ Демо-режим' : '🟢 Подключено';
+  initFarmUI();
+  nav('animals');
+}
+
+// ============================================================
+// DB HELPERS
+// ============================================================
+const FARM_TABLES = ['animals','arrivals','departures','matings','ultrasounds','births','milk_records','selection_scores','vet_records','weight_records'];
+
+async function dbFetch(table, options={}) {
+  if (demoMode) {
+    const map = {animals:DEMO_ANIMALS,arrivals:DEMO_ARRIVALS,departures:DEMO_DEPARTURES,matings:DEMO_MATINGS,ultrasounds:DEMO_ULTRASOUNDS,births:DEMO_BIRTHS,milk_records:DEMO_MILK};
+    return map[table] || [];
+  }
+  let q = sbClient.from(table).select(options.select||'*');
+  if (FARM_TABLES.includes(table)) q = q.eq('farm_id', currentFarm);
+  if (options.filter) options.filter.forEach(f => q = q[f[0]](f[1],f[2]));
+  if (options.order) q = q.order(options.order, {ascending: options.asc!==false});
+  if (options.limit) q = q.limit(options.limit);
+  const {data,error} = await q;
+  if (error) throw error;
+  return data||[];
+}
+
+async function dbInsert(table, row) {
+  if (demoMode) { alert('В демо-режиме сохранение не работает.\nПодключите Supabase для хранения данных.'); return null; }
+  if (FARM_TABLES.includes(table)) row.farm_id = currentFarm;
+  const {data,error} = await sbClient.from(table).insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function dbDelete(table, id) {
+  if (demoMode) { alert('Демо-режим: удаление недоступно.'); return; }
+  const {error} = await sbClient.from(table).delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+let currentPage = '';
+function nav(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById('nav-' + page);
+  if (navEl) navEl.classList.add('active');
+  closeMobMenu();
+  updateBotNav(page);
+  renderPage(page);
+}
+
+function renderPage(page) {
+  const el = document.getElementById('main');
+  el.innerHTML = '<div class="loading-row"><div class="spinner"></div></div>';
+  const handlers = {animals, arrivals, departures, matings, ultrasounds, births, milk, selection, analytics, vet, weights};
+  if (handlers[page]) handlers[page]();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('ru-RU'); }
+function fmtMoney(n) { if (!n) return '—'; return Number(n).toLocaleString('ru-RU') + ' ₽'; }
+function ageStr(dob) {
+  if (!dob) return '—';
+  const diff = Date.now() - new Date(dob);
+  const months = Math.floor(diff / (1000*60*60*24*30.44));
+  if (months < 12) return months + ' мес.';
+  return Math.floor(months/12) + ' г. ' + (months%12 ? months%12+' м.' : '');
+}
+function statusBadge(s) {
+  const m={active:'<span class="badge b-green">Активна</span>',sold:'<span class="badge b-gray">Продана</span>',dead:'<span class="badge b-red">Пала</span>',disposed:'<span class="badge b-amber">Выбыла</span>'};
+  return m[s]||s;
+}
+function arrivalBadge(t) {
+  const m={purchase:'Покупка',born:'Рождение',transfer:'Перевод',return:'Возврат'};
+  return `<span class="badge b-blue">${m[t]||t}</span>`;
+}
+function departureBadge(r) {
+  const m={sale:'<span class="badge b-gray">Продажа</span>',slaughter:'<span class="badge b-red">Убой</span>',death:'<span class="badge b-red">Падёж</span>',transfer:'<span class="badge b-blue">Перевод</span>',loss:'<span class="badge b-amber">Потеря</span>'};
+  return m[r]||r;
+}
+function uziBadge(r) {
+  const m={pregnant:'<span class="badge b-green">Суягная</span>',empty:'<span class="badge b-red">Пустая</span>',unsure:'<span class="badge b-amber">Под вопросом</span>'};
+  return m[r]||r;
+}
+function birthTypeBadge(t) {
+  const m={normal:'<span class="badge b-green">Норма</span>',difficult:'<span class="badge b-amber">Тяжёлые</span>',cesarean:'<span class="badge b-red">Кесарево</span>'};
+  return m[t]||t;
+}
+
+function setMain(html) {
+  const mobBar = `<div class="mob-bar-inline" style="align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:0.5px solid var(--border);margin:-20px -28px 16px -28px">
+    <button onclick="toggleMobMenu()" style="background:none;border:1.5px solid var(--border2);border-radius:6px;padding:8px 14px;font-size:22px;cursor:pointer;color:var(--text);line-height:1">☰</button>
+    <span style="font-size:14px;font-weight:600;color:var(--green)">АгроПлем МРС</span>
+    <span style="font-size:11px;color:var(--text2);margin-left:auto">${FARMS[currentFarm]||''}</span>
+  </div>`;
+  document.getElementById('main').innerHTML = mobBar + html;
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(html) {
+  document.getElementById('modal-root').innerHTML = `<div class="overlay" id="overlay" onclick="closeModalOutside(event)">${html}</div>`;
+}
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+function closeModalOutside(e) { if (e.target.id==='overlay') closeModal(); }
+
+// ============================================================
+// ANIMALS
+// ============================================================
+async function animals() {
+  const{data:allData}=await sbClient.from('animals').select('*').eq('farm_id',currentFarm).order('ear_tag');
+  const allRows=allData||[];
+  const rows=allRows.filter(r=>r.status!=='deleted'&&r.status!=='external');
+  const trashCount=allRows.filter(r=>r.status==='deleted').length;
+  const active=rows.filter(r=>r.status==='active').length;
+  const females=rows.filter(r=>r.sex==='Ж'&&r.status==='active').length;
+  const males=rows.filter(r=>r.sex==='М'&&r.status==='active').length;
+  const sold=rows.filter(r=>r.status==='sold'||r.status==='disposed').length;
+  const breeds=[...new Set(rows.map(r=>r.breed).filter(Boolean))].sort();
+  window._animalRows=rows;
+  setMain(`
+<div class="page-header"><h1>Учёт животных — ${FARMS[currentFarm]}</h1><p>Карточки, родословная, движение поголовья</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Активных</div><div class="stat-value green">${active}</div></div>
+  <div class="stat"><div class="stat-label">Маток</div><div class="stat-value blue">${females}</div></div>
+  <div class="stat"><div class="stat-label">Баранов/козлов</div><div class="stat-value">${males}</div></div>
+  <div class="stat"><div class="stat-label">Выбыло</div><div class="stat-value amber">${sold}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Поголовье</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${trashCount>0?`<button class="btn btn-sm" style="color:var(--amber)" onclick="openTrash()">🗑 Корзина (${trashCount})</button>`:''}
+      <button class="btn btn-sm" onclick="exportAnimalsExcel()">⬇ Экспорт Excel</button>
+      <button class="btn btn-sm" onclick="openImportModal()">⬆ Импорт Excel</button>
+      <button class="btn btn-primary btn-sm" onclick="openAnimalForm()">+ Добавить животное</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <input id="search-input" type="text" placeholder="🔍 Поиск по бирке, кличке..." oninput="filterAnimals()"
+      style="flex:1;min-width:180px;padding:8px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+    <select id="filter-sex" onchange="filterAnimals()" style="padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+      <option value="">Все полы</option><option value="Ж">♀ Самки</option><option value="М">♂ Самцы</option>
+    </select>
+    <select id="filter-breed" onchange="filterAnimals()" style="padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+      <option value="">Все породы</option>${breeds.map(b=>`<option value="${b}">${b}</option>`).join('')}
+    </select>
+    <select id="filter-status" onchange="filterAnimals()" style="padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">
+      <option value="">Все статусы</option><option value="active">Активные</option><option value="sold">Проданные</option><option value="dead">Павшие</option>
+    </select>
+    <button class="btn btn-sm" onclick="resetFilters()" style="color:var(--text2)">Сбросить</button>
+  </div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:8px" id="filter-count">Показано: ${rows.length} из ${rows.length}</div>
+  <div class="bulk-bar" id="bulk-bar">
+    <span id="bulk-count">0 выбрано</span>
+    <button class="btn btn-sm btn-danger" onclick="bulkDelete()">Удалить выбранных</button>
+    <button class="btn btn-sm" onclick="clearSelection()">Снять выделение</button>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr>
+      <th class="cb-col"><input type="checkbox" id="cb-all" onchange="toggleAll(this)"></th>
+      <th>Бирка</th><th>Кличка</th><th>Пол</th><th>Порода</th><th>Рождение</th><th>Возраст</th><th>Масса</th><th>Статус</th><th></th>
+    </tr></thead>
+    <tbody id="animals-tbody">${renderAnimalRows(rows)}</tbody>
+  </table></div>
+</div>`);
+}
+
+
+async function viewAnimal(id) {
+  // Load animal from ALL farms (to find external parents too)
+  const {data:allAnimals} = await sbClient.from('animals').select('id,ear_tag,name,breed,sex,status,farm_id').neq('status','deleted');
+  const allMap = {};
+  (allAnimals||[]).forEach(a => allMap[a.ear_tag] = a);
+
+  const rows = await dbFetch('animals');
+  const a = rows.find(r=>r.id===id); if (!a) return;
+
+  // Find parents
+  const mom = a.mother_tag ? allMap[a.mother_tag] : null;
+  const dad = a.father_tag ? allMap[a.father_tag] : null;
+
+  function parentBox(tag, animal, role, emoji) {
+    if (!tag) return `<div class="ped-box" style="opacity:.5"><div class="pn">Неизвестен</div><div class="pm">${role}</div></div>`;
+    if (animal) {
+      const isExternal = animal.farm_id !== currentFarm;
+      return `<div class="ped-box ped-link" onclick="viewAnimal('${animal.id}')" style="cursor:pointer;border-color:var(--green);background:var(--green-bg)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="pn" style="color:var(--green)">${animal.name||animal.ear_tag}</div>
+          <span style="font-size:10px;color:var(--green)">→</span>
+        </div>
+        <div class="pm" style="font-family:var(--mono)">${animal.ear_tag}</div>
+        <div class="pm">${role}${isExternal?` · <span style="color:var(--amber)">внешнее</span>`:''}</div>
+      </div>`;
+    }
+    // Not found - offer to create external
+    return `<div class="ped-box">
+      <div class="pn">${tag}</div>
+      <div class="pm">${role} · не найдено в базе</div>
+      <button class="btn btn-sm" style="margin-top:6px;font-size:11px" onclick="createExternalParent('${tag}','${role==='Мать'?'Ж':'М'}','${id}')">+ Создать карточку</button>
+    </div>`;
+  }
+
+  setMain(`
+<div class="page-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <button class="btn btn-sm" onclick="nav('animals')">← Назад</button>
+  <div><h1>${a.name||a.ear_tag} <span style="font-weight:400;font-size:14px;color:var(--text2)">(${a.ear_tag})</span></h1>
+  <p>${a.breed} · ${a.sex==='М'?'Самец':'Самка'} · ${ageStr(a.dob)}</p></div>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="btn btn-sm" onclick="openAnimalForm(${JSON.stringify(a).replace(/"/g,'&quot;')})">Редактировать</button>
+    <button class="btn btn-sm btn-danger" onclick="deleteAnimal('${a.id}')">Удалить</button>
+  </div>
+</div>
+<div class="two-col">
+  <div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Основные данные</div>${statusBadge(a.status)}</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="dl">Инд. номер</div><div class="dv" style="font-family:var(--mono)">${a.ear_tag}</div></div>
+        <div class="detail-item"><div class="dl">Кличка</div><div class="dv">${a.name||'—'}</div></div>
+        <div class="detail-item"><div class="dl">Пол</div><div class="dv">${a.sex==='М'?'Самец (♂)':'Самка (♀)'}</div></div>
+        <div class="detail-item"><div class="dl">Порода</div><div class="dv">${a.breed}</div></div>
+        <div class="detail-item"><div class="dl">Дата рождения</div><div class="dv">${fmtDate(a.dob)}</div></div>
+        <div class="detail-item"><div class="dl">Возраст</div><div class="dv">${ageStr(a.dob)}</div></div>
+        <div class="detail-item"><div class="dl">Живая масса</div><div class="dv">${a.weight_kg||'—'} кг</div></div>
+        <div class="detail-item"><div class="dl">Масть</div><div class="dv">${a.color||'—'}</div></div>
+      </div>
+      ${a.notes?`<div style="margin-top:12px;font-size:12px;color:var(--text2);background:var(--surface2);padding:8px 10px;border-radius:var(--radius)">${a.notes}</div>`:''}
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Происхождение</div>
+        <div style="font-size:11px;color:var(--text2)">Нажми на карточку чтобы открыть</div>
+      </div>
+      <div class="pedigree-grid">
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px">♀ Мать</div>
+          ${parentBox(a.mother_tag, mom, 'Мать', '♀')}
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px">♂ Отец</div>
+          ${parentBox(a.father_tag, dad, 'Отец', '♂')}
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-head"><div class="card-title">Потомки</div></div>
+      ${await getOffspring(a.ear_tag, allAnimals||[])}
+    </div>
+  </div>
+</div>`);
+}
+
+async function getOffspring(earTag, allAnimals) {
+  const children = allAnimals.filter(a =>
+    (a.mother_tag===earTag || a.father_tag===earTag) && a.status!=='deleted'
+  );
+  if (children.length===0) return '<div style="font-size:13px;color:var(--text2);padding:4px 0">Потомков не найдено</div>';
+  return `<div style="display:flex;flex-direction:column;gap:6px">` +
+    children.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;background:var(--surface2);border-radius:var(--radius);cursor:pointer" onclick="viewAnimal('${c.id}')">
+      <span style="font-size:12px">${c.sex==='М'?'♂':'♀'}</span>
+      <div style="flex:1">
+        <div style="font-weight:500;font-size:13px">${c.name||c.ear_tag}</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono)">${c.ear_tag} · ${c.sex===earTag?'мать':'отец'==='мать'?'дочь':'сын'}</div>
+      </div>
+      <span style="font-size:12px;color:var(--text2)">→</span>
+    </div>`).join('') + '</div>';
+}
+
+function createExternalParent(tag, sex, childId) {
+  const farmOpts = [...FARMS_LIST.map(f=>`<option value="${f.id}">${f.name}</option>`), '<option value="_other">Другое КФХ...</option>'].join('');
+  openModal(`<div class="modal" style="max-width:460px">
+    <div class="modal-head"><div class="modal-title">Создать карточку родителя</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div style="font-size:13px;background:var(--blue-bg);color:var(--blue);padding:10px 13px;border-radius:var(--radius);margin-bottom:14px">
+      Эта карточка <b>не войдёт в поголовье</b> — только для связи с потомками.
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Ушная бирка</label><input id="ep-tag" value="${tag}"></div>
+      <div class="form-group"><label>Кличка</label><input id="ep-name" placeholder="Необязательно"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Пол</label><select id="ep-sex">
+        <option value="Ж" ${sex==='Ж'?'selected':''}>♀ Самка</option>
+        <option value="М" ${sex==='М'?'selected':''}>♂ Самец</option>
+      </select></div>
+      <div class="form-group"><label>Порода</label><select id="ep-breed">
+        ${['Романовская','Меринос','Дорпер','Эдильбаевская','Каракульская','Гиссарская','Ангорская','Нубийская коза','Зааненская коза','Другая'].map(b=>`<option>${b}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Дата рождения</label><input type="date" id="ep-dob"></div>
+      <div class="form-group"><label>КФХ / хозяйство</label>
+        <select id="ep-farm" onchange="toggleEpFarm()" style="margin-bottom:5px">${farmOpts}</select>
+        <input id="ep-farm-other" placeholder="Название стороннего КФХ" style="display:none">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:4px"><label>Примечания</label><textarea id="ep-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveExternalParent('${childId}')">Создать карточку</button>
+    </div>
+  </div>`);
+}
+
+function toggleEpFarm() {
+  const sel = document.getElementById('ep-farm');
+  const inp = document.getElementById('ep-farm-other');
+  if (inp) inp.style.display = sel.value==='_other' ? 'block' : 'none';
+}
+
+async function saveExternalParent(childId) {
+  const tag = document.getElementById('ep-tag').value.trim();
+  if (!tag) return alert('Введите бирку');
+  const farmSel = document.getElementById('ep-farm').value;
+  const farmOther = document.getElementById('ep-farm-other').value.trim();
+  const farmLabel = farmSel==='_other' ? (farmOther||'Стороннее КФХ') : FARMS[farmSel];
+  // Store in current farm but mark external, note origin farm
+  try {
+    await sbClient.from('animals').upsert({
+      ear_tag: tag,
+      name: document.getElementById('ep-name').value.trim()||null,
+      sex: document.getElementById('ep-sex').value,
+      breed: document.getElementById('ep-breed').value,
+      dob: document.getElementById('ep-dob').value||null,
+      status: 'external',
+      farm_id: currentFarm,
+      notes: `КФХ: ${farmLabel}. ` + (document.getElementById('ep-notes').value.trim()||''),
+    }, {onConflict:'ear_tag'});
+    closeModal();
+    viewAnimal(childId);
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+
+function openAnimalForm(data={}) {
+  const farmOpts = [...FARMS_LIST.map(f=>`<option value="${f.id}" ${(data.farm_id||currentFarm)===f.id?'selected':''}>${f.name}</option>`), `<option value="_other">Другое КФХ...</option>`].join('');
+  const breeds = ['Романовская','Меринос','Дорпер','Эдильбаевская','Каракульская','Гиссарская','Ангорская','Нубийская коза','Зааненская коза','Другая'];
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">${data.id?'Редактировать':'Новое животное'}</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-section">Идентификация</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Ушная бирка *</label><input id="f-tag" value="${data.ear_tag||''}" placeholder="МО-0001"></div>
+      <div class="form-group"><label>Кличка</label><input id="f-name" value="${data.name||''}"></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Пол *</label><select id="f-sex">
+        <option value="Ж" ${data.sex==='Ж'?'selected':''}>♀ Самка</option>
+        <option value="М" ${data.sex==='М'?'selected':''}>♂ Самец</option>
+      </select></div>
+      <div class="form-group"><label>Порода *</label><select id="f-breed">
+        ${breeds.map(b=>`<option ${data.breed===b?'selected':''}>${b}</option>`).join('')}
+      </select></div>
+      <div class="form-group"><label>Статус</label><select id="f-status">
+        <option value="active" ${(!data.status||data.status==='active')?'selected':''}>Активна</option>
+        <option value="sold" ${data.status==='sold'?'selected':''}>Продана</option>
+        <option value="dead" ${data.status==='dead'?'selected':''}>Пала</option>
+        <option value="disposed" ${data.status==='disposed'?'selected':''}>Выбыла</option>
+      </select></div>
+    </div>
+    <div class="form-section">КФХ / хозяйство</div>
+    <div class="form-grid">
+      <div class="form-group"><label>КФХ</label>
+        <select id="f-farm" onchange="toggleFFarm()" style="margin-bottom:5px">${farmOpts}</select>
+        <input id="f-farm-other" placeholder="Название стороннего КФХ" style="display:${data.farm_id&&!FARMS_LIST.find(f=>f.id===data.farm_id)?'block':'none'}">
+      </div>
+    </div>
+    <div class="form-section">Биометрия</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Дата рождения</label><input type="date" id="f-dob" value="${data.dob||''}"></div>
+      <div class="form-group"><label>Живая масса, кг</label><input type="number" step="0.1" id="f-weight" value="${data.weight_kg||''}"></div>
+    </div>
+    <div class="form-group"><label>Масть / окрас</label><input id="f-color" value="${data.color||''}"></div>
+    <div class="form-section">Происхождение</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка матери</label><input id="f-mother" value="${data.mother_tag||''}" placeholder="МО-0019"></div>
+      <div class="form-group"><label>Бирка отца</label><input id="f-father" value="${data.father_tag||''}" placeholder="МО-0005"></div>
+    </div>
+    <div class="form-group" style="margin-top:10px"><label>Примечания</label><textarea id="f-notes">${data.notes||''}</textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveAnimal('${data.id||''}')">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+function toggleFFarm() {
+  const sel = document.getElementById('f-farm');
+  const inp = document.getElementById('f-farm-other');
+  if (inp) inp.style.display = sel.value==='_other' ? 'block' : 'none';
+}
+
+async function saveAnimal(id) {
+  const tag = document.getElementById('f-tag').value.trim();
+  if (!tag) return alert('Введите ушную бирку');
+  const farmSel = document.getElementById('f-farm').value;
+  const farmId = farmSel==='_other' ? currentFarm : farmSel;
+  const farmOther = farmSel==='_other' ? document.getElementById('f-farm-other').value.trim() : '';
+  const row = {
+    ear_tag: tag,
+    name: document.getElementById('f-name').value.trim()||null,
+    sex: document.getElementById('f-sex').value,
+    breed: document.getElementById('f-breed').value,
+    status: document.getElementById('f-status').value,
+    farm_id: farmId,
+    dob: document.getElementById('f-dob').value||null,
+    weight_kg: parseFloat(document.getElementById('f-weight').value)||null,
+    color: document.getElementById('f-color').value.trim()||null,
+    mother_tag: document.getElementById('f-mother').value.trim()||null,
+    father_tag: document.getElementById('f-father').value.trim()||null,
+    notes: (farmOther ? `КФХ: ${farmOther}. ` : '') + (document.getElementById('f-notes').value.trim()||'') || null,
+  };
+  try {
+    if (id) {
+      const {error} = await sbClient.from('animals').update(row).eq('id', id);
+      if (error) throw error;
+    } else {
+      const {error} = await sbClient.from('animals').insert(row);
+      if (error) throw error;
+    }
+    invAnMap(); closeModal(); nav('animals');
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+
+// ============================================================
+// ARRIVALS
+// ============================================================
+async function arrivals() {
+  const rows = await dbFetch('arrivals');
+  const purchased = rows.filter(r=>r.source_type==='purchase').length;
+  const born = rows.filter(r=>r.source_type==='born').length;
+  const totalSpent = rows.reduce((s,r)=>s+(r.price||0),0);
+  setMain(`
+<div class="page-header"><h1>Прибытие животных</h1><p>Покупки, рождения, переводы из других хозяйств</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Всего записей</div><div class="stat-value">${rows.length}</div></div>
+  <div class="stat"><div class="stat-label">Куплено</div><div class="stat-value blue">${purchased}</div></div>
+  <div class="stat"><div class="stat-label">Рождено</div><div class="stat-value green">${born}</div></div>
+  <div class="stat"><div class="stat-label">Потрачено</div><div class="stat-value amber">${totalSpent>0?totalSpent.toLocaleString('ru-RU')+' ₽':'—'}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Журнал прибытия</div>
+    <button class="btn btn-sm" onclick="openSectionImport('arrivals')">⬆ Импорт</button>
+      <button class="btn btn-sm" onclick="exportArrivalExcel()">⬇ Экспорт</button>
+      <button class="btn btn-primary btn-sm" onclick="openArrivalForm()">+ Добавить запись</button>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Животное</th><th>Дата прибытия</th><th>Тип</th><th>Откуда / от кого</th><th>Масса при прибытии</th><th>Цена</th><th>Документ</th></tr></thead>
+    <tbody>
+      ${rows.length===0 ? `<tr><td colspan="7" class="empty">Записей нет</td></tr>` :
+        rows.map(r=>`<tr>
+          <td><b>${r.name||r.ear_tag||'—'}</b><br><span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${r.ear_tag||''}</span></td>
+          <td>${fmtDate(r.arrival_date)}</td>
+          <td>${arrivalBadge(r.source_type)}</td>
+          <td>${r.source_name||'—'}</td>
+          <td>${r.weight_at_arrival||'—'} кг</td>
+          <td>${fmtMoney(r.price)}</td>
+          <td style="font-size:12px;color:var(--text2)">${r.doc_number||'—'}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table></div>
+</div>`);
+}
+
+function openArrivalForm() {
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Запись о прибытии</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Ушная бирка животного *</label><input id="a-tag" type="text" placeholder="МО-0050"></div>
+      <div class="form-group"><label>Дата прибытия *</label><input id="a-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Тип поступления *</label><select id="a-type">
+        <option value="purchase">Покупка</option>
+        <option value="born">Рождение в хозяйстве</option>
+        <option value="transfer">Перевод</option>
+        <option value="return">Возврат</option>
+      </select></div>
+      <div class="form-group"><label>Откуда / Хозяйство</label><input id="a-source" type="text" placeholder="ПЗ Восток"></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Масса при прибытии, кг</label><input id="a-weight" type="number" step="0.1"></div>
+      <div class="form-group"><label>Цена, ₽</label><input id="a-price" type="number"></div>
+      <div class="form-group"><label>№ документа</label><input id="a-doc" type="text"></div>
+    </div>
+    <div class="form-group" style="margin-top:8px"><label>Примечания</label><textarea id="a-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveArrival()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+async function saveArrival() {
+  const row = {
+    ear_tag_ref: document.getElementById('a-tag').value.trim(),
+    arrival_date: document.getElementById('a-date').value,
+    source_type: document.getElementById('a-type').value,
+    source_name: document.getElementById('a-source').value.trim()||null,
+    weight_at_arrival: parseFloat(document.getElementById('a-weight').value)||null,
+    price: parseFloat(document.getElementById('a-price').value)||null,
+    doc_number: document.getElementById('a-doc').value.trim()||null,
+    notes: document.getElementById('a-notes').value.trim()||null,
+  };
+  if (!row.ear_tag_ref||!row.arrival_date) { alert('Заполните обязательные поля'); return; }
+  // find animal
+  if (!demoMode) {
+    const {data:an} = await sbClient.from('animals').select('id').eq('ear_tag',row.ear_tag_ref).single();
+    if (!an) { alert('Животное с такой биркой не найдено. Сначала добавьте его в поголовье.'); return; }
+    row.animal_id = an.id; delete row.ear_tag_ref;
+    await dbInsert('arrivals', row);
+  }
+  closeModal(); nav('arrivals');
+}
+
+// ============================================================
+// DEPARTURES
+// ============================================================
+async function departures() {
+  const rows = await dbFetch('departures');
+  const sales = rows.filter(r=>r.reason==='sale').length;
+  const deaths = rows.filter(r=>r.reason==='death').length;
+  const totalEarned = rows.filter(r=>r.reason==='sale').reduce((s,r)=>s+(r.price||0),0);
+  setMain(`
+<div class="page-header"><h1>Убытие животных</h1><p>Продажи, убой, падёж, переводы</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Всего записей</div><div class="stat-value">${rows.length}</div></div>
+  <div class="stat"><div class="stat-label">Продано</div><div class="stat-value green">${sales}</div></div>
+  <div class="stat"><div class="stat-label">Падёж</div><div class="stat-value red">${deaths}</div></div>
+  <div class="stat"><div class="stat-label">Выручка от продаж</div><div class="stat-value teal">${totalEarned>0?totalEarned.toLocaleString('ru-RU')+' ₽':'—'}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Журнал убытия</div>
+    <button class="btn btn-sm" onclick="openSectionImport('departures')">⬆ Импорт</button>
+      <button class="btn btn-sm" onclick="exportDepartureExcel()">⬇ Экспорт</button>
+    <button class="btn btn-primary btn-sm" onclick="openDepartureForm()">+ Добавить запись</button>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Животное</th><th>Дата убытия</th><th>Причина</th><th>Куда / кому</th><th>Масса при убытии</th><th>Цена</th><th>Документ</th></tr></thead>
+    <tbody>
+      ${rows.length===0 ? `<tr><td colspan="7" class="empty">Записей нет</td></tr>` :
+        rows.map(r=>`<tr>
+          <td><b>${r.name||r.ear_tag||'—'}</b><br><span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${r.ear_tag||''}</span></td>
+          <td>${fmtDate(r.departure_date)}</td>
+          <td>${departureBadge(r.reason)}</td>
+          <td>${r.destination||'—'}</td>
+          <td>${r.weight_at_departure||'—'} кг</td>
+          <td>${fmtMoney(r.price)}</td>
+          <td style="font-size:12px;color:var(--text2)">${r.doc_number||'—'}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table></div>
+</div>`);
+}
+
+function openDepartureForm() {
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Запись об убытии</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Ушная бирка животного *</label><input id="d-tag" type="text" placeholder="МО-0044"></div>
+      <div class="form-group"><label>Дата убытия *</label><input id="d-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Причина убытия *</label><select id="d-reason">
+        <option value="sale">Продажа</option>
+        <option value="slaughter">Убой</option>
+        <option value="death">Падёж</option>
+        <option value="transfer">Перевод</option>
+        <option value="loss">Потеря</option>
+      </select></div>
+      <div class="form-group"><label>Куда / кому</label><input id="d-dest" type="text" placeholder="ИП Смирнов К.А."></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Масса при убытии, кг</label><input id="d-weight" type="number" step="0.1"></div>
+      <div class="form-group"><label>Цена, ₽</label><input id="d-price" type="number"></div>
+      <div class="form-group"><label>№ документа</label><input id="d-doc" type="text"></div>
+    </div>
+    <div class="form-group" style="margin-top:8px"><label>Примечания</label><textarea id="d-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveDeparture()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+async function saveDeparture() {
+  const tag = document.getElementById('d-tag').value.trim();
+  const date = document.getElementById('d-date').value;
+  if (!tag||!date) { alert('Заполните обязательные поля'); return; }
+  const row = {
+    departure_date: date,
+    reason: document.getElementById('d-reason').value,
+    destination: document.getElementById('d-dest').value.trim()||null,
+    weight_at_departure: parseFloat(document.getElementById('d-weight').value)||null,
+    price: parseFloat(document.getElementById('d-price').value)||null,
+    doc_number: document.getElementById('d-doc').value.trim()||null,
+    notes: document.getElementById('d-notes').value.trim()||null,
+  };
+  if (!demoMode) {
+    const {data:an} = await sbClient.from('animals').select('id').eq('ear_tag',tag).single();
+    if (!an) { alert('Животное не найдено'); return; }
+    row.animal_id = an.id;
+    await dbInsert('departures', row);
+    await sbClient.from('animals').update({status:'sold'}).eq('id',an.id);
+  }
+  closeModal(); nav('departures');
+}
+
+// ============================================================
+// MATINGS
+// ============================================================
+async function matings() {
+  const rows = await dbFetch('matings');
+  const seasons = [...new Set(rows.map(r=>r.season).filter(Boolean))];
+  setMain(`
+<div class="page-header"><h1>Случки и осеменение</h1><p>Журнал случек, сезоны воспроизводства</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Всего случек</div><div class="stat-value">${rows.length}</div></div>
+  <div class="stat"><div class="stat-label">Сезон 2024/25</div><div class="stat-value blue">${rows.filter(r=>r.season==='2024/2025').length}</div></div>
+  <div class="stat"><div class="stat-label">Естественная случка</div><div class="stat-value green">${rows.filter(r=>r.method==='natural').length}</div></div>
+  <div class="stat"><div class="stat-label">Искусств. осем.</div><div class="stat-value amber">${rows.filter(r=>r.method==='artificial').length}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Журнал случек</div>
+    <button class="btn btn-sm" onclick="openSectionImport('matings')">⬆ Импорт</button>
+      <button class="btn btn-sm" onclick="exportMatingExcel()">⬇ Экспорт</button>
+      <button class="btn btn-primary btn-sm" onclick="openMatingForm()">+ Записать случку</button>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Матка</th><th>Баран/производитель</th><th>Дата случки</th><th>Способ</th><th>Ожид. окот</th><th>Сезон</th><th>Примечания</th></tr></thead>
+    <tbody>
+      ${rows.length===0 ? `<tr><td colspan="7" class="empty">Записей нет</td></tr>` :
+        rows.map(r=>`<tr>
+          <td><b>${r.female_name||r.female_tag||'—'}</b><br><span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${r.female_tag||''}</span></td>
+          <td>${r.male_name||r.male_tag||'—'}<br><span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${r.male_tag||''}</span></td>
+          <td>${fmtDate(r.mating_date)}</td>
+          <td>${r.method==='natural'?'<span class="badge b-green">Естеств.</span>':'<span class="badge b-blue">Искусств.</span>'}</td>
+          <td>${fmtDate(r.expected_birth)}</td>
+          <td style="color:var(--text2)">${r.season||'—'}</td>
+          <td style="font-size:12px;color:var(--text2)">${r.notes||'—'}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table></div>
+</div>`);
+}
+
+function openMatingForm() {
+  const today = new Date().toISOString().split('T')[0];
+  const expected = new Date(Date.now()+150*24*60*60*1000).toISOString().split('T')[0];
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Записать случку / осеменение</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка матки *</label><input id="mt-female" type="text" placeholder="МО-0042" oninput="calcExpected()"></div>
+      <div class="form-group"><label>Бирка барана *</label><input id="mt-male" type="text" placeholder="МО-0046"></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Дата случки *</label><input id="mt-date" type="date" value="${today}" oninput="calcExpected()"></div>
+      <div class="form-group"><label>Способ</label><select id="mt-method"><option value="natural">Естественная</option><option value="artificial">Искусственное</option></select></div>
+      <div class="form-group"><label>Сезон</label><input id="mt-season" type="text" value="2024/2025"></div>
+    </div>
+    <div class="form-group">
+      <label>Ожидаемая дата окота <span style="color:var(--text3)">(+150 дней, авторасчёт)</span></label>
+      <input id="mt-expected" type="date" value="${expected}">
+    </div>
+    <div class="form-group" style="margin-top:8px"><label>Примечания</label><textarea id="mt-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveMating()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+function calcExpected() {
+  const d = document.getElementById('mt-date').value;
+  if (d) {
+    const exp = new Date(new Date(d).getTime()+150*24*60*60*1000).toISOString().split('T')[0];
+    document.getElementById('mt-expected').value = exp;
+  }
+}
+
+async function saveMating() {
+  const femaleTag = document.getElementById('mt-female').value.trim();
+  const maleTag = document.getElementById('mt-male').value.trim();
+  const date = document.getElementById('mt-date').value;
+  if (!femaleTag||!maleTag||!date) { alert('Заполните обязательные поля'); return; }
+  if (!demoMode) {
+    const {data:fem} = await sbClient.from('animals').select('id').eq('ear_tag',femaleTag).single();
+    const {data:mal} = await sbClient.from('animals').select('id').eq('ear_tag',maleTag).single();
+    if (!fem||!mal) { alert('Одно из животных не найдено'); return; }
+    await dbInsert('matings',{female_id:fem.id,male_id:mal.id,mating_date:date,method:document.getElementById('mt-method').value,expected_birth:document.getElementById('mt-expected').value||null,season:document.getElementById('mt-season').value||null,notes:document.getElementById('mt-notes').value.trim()||null});
+  }
+  closeModal(); nav('matings');
+}
+
+// ============================================================
+// ULTRASOUNDS
+// ============================================================
+async function ultrasounds() {
+  const rows = await dbFetch('ultrasounds');
+  const pregnant = rows.filter(r=>r.result==='pregnant').length;
+  const empty = rows.filter(r=>r.result==='empty').length;
+  const twins = rows.filter(r=>r.fetus_count>=2).length;
+  setMain(`
+<div class="page-header"><h1>Журнал УЗИ</h1><p>Диагностика суягности, количество плодов</p></div>
+${empty>0?`<div class="alert alert-warning">⚠ Пустых маток: <b>${empty}</b> — рекомендовано повторное осеменение</div>`:''}
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Обследований</div><div class="stat-value">${rows.length}</div></div>
+  <div class="stat"><div class="stat-label">Суягных</div><div class="stat-value green">${pregnant}</div></div>
+  <div class="stat"><div class="stat-label">Пустых</div><div class="stat-value red">${empty}</div></div>
+  <div class="stat"><div class="stat-label">Многоплодных</div><div class="stat-value teal">${twins}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Результаты УЗИ</div>
+    <button class="btn btn-sm" onclick="openSectionImport('uzi')">⬆ Импорт</button>
+      <button class="btn btn-sm" onclick="exportUziExcel()">⬇ Экспорт</button>
+      <button class="btn btn-primary btn-sm" onclick="openUziForm()">+ Добавить запись УЗИ</button>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Животное</th><th>Дата УЗИ</th><th>Врач</th><th>Результат</th><th>Плодов</th><th>Срок, дней</th><th>Ожид. окот</th><th>Примечания</th></tr></thead>
+    <tbody>
+      ${rows.length===0 ? `<tr><td colspan="8" class="empty">Записей нет</td></tr>` :
+        rows.map(r=>`<tr>
+          <td><b>${r.name||r.ear_tag||'—'}</b><br><span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${r.ear_tag||''}</span></td>
+          <td>${fmtDate(r.exam_date)}</td>
+          <td style="color:var(--text2)">${r.vet_name||'—'}</td>
+          <td>${uziBadge(r.result)}</td>
+          <td style="font-weight:600;color:${r.fetus_count>=2?'var(--teal)':'var(--text)'}">${r.fetus_count||'—'}</td>
+          <td>${r.gestation_days||'—'}</td>
+          <td>${fmtDate(r.expected_birth)}</td>
+          <td style="font-size:12px;color:var(--text2)">${r.notes||'—'}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table></div>
+</div>`);
+}
+
+function openUziForm() {
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Запись УЗИ</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка животного *</label><input id="u-tag" type="text" placeholder="МО-0042"></div>
+      <div class="form-group"><label>Дата обследования *</label><input id="u-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Ветеринар / специалист</label><input id="u-vet" type="text" placeholder="Иванова М.С."></div>
+      <div class="form-group"><label>Результат *</label><select id="u-result" onchange="toggleUziFields()">
+        <option value="pregnant">Суягная</option>
+        <option value="empty">Пустая</option>
+        <option value="unsure">Под вопросом</option>
+      </select></div>
+    </div>
+    <div id="u-pregnant-fields">
+      <div class="form-grid cols3">
+        <div class="form-group"><label>Количество плодов</label><input id="u-fetuses" type="number" min="1" max="5" value="1"></div>
+        <div class="form-group"><label>Срок суягности, дней</label><input id="u-gestation" type="number" min="1" max="150" oninput="calcUziExpected()"></div>
+        <div class="form-group"><label>Ожид. дата окота</label><input id="u-expected" type="date"></div>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:8px"><label>Примечания</label><textarea id="u-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveUzi()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+function toggleUziFields() {
+  const r = document.getElementById('u-result').value;
+  document.getElementById('u-pregnant-fields').style.opacity = r==='pregnant'?'1':'0.4';
+}
+
+function calcUziExpected() {
+  const days = parseInt(document.getElementById('u-gestation').value);
+  if (days>0) {
+    const remaining = 150 - days;
+    const exp = new Date(Date.now()+remaining*24*60*60*1000).toISOString().split('T')[0];
+    document.getElementById('u-expected').value = exp;
+  }
+}
+
+async function saveUzi() {
+  const tag = document.getElementById('u-tag').value.trim();
+  const date = document.getElementById('u-date').value;
+  if (!tag||!date) { alert('Заполните обязательные поля'); return; }
+  const row = {
+    exam_date: date,
+    vet_name: document.getElementById('u-vet').value.trim()||null,
+    result: document.getElementById('u-result').value,
+    fetus_count: parseInt(document.getElementById('u-fetuses').value)||null,
+    gestation_days: parseInt(document.getElementById('u-gestation').value)||null,
+    expected_birth: document.getElementById('u-expected').value||null,
+    notes: document.getElementById('u-notes').value.trim()||null,
+  };
+  if (!demoMode) {
+    const {data:an} = await sbClient.from('animals').select('id').eq('ear_tag',tag).single();
+    if (!an) { alert('Животное не найдено'); return; }
+    row.animal_id = an.id;
+    await dbInsert('ultrasounds', row);
+  }
+  closeModal(); nav('ultrasounds');
+}
+
+// ============================================================
+// BIRTHS
+// ============================================================
+async function births() {
+  const rows = await dbFetch('births');
+  const totalBorn = rows.reduce((s,r)=>s+r.lambs_born,0);
+  const totalAlive = rows.reduce((s,r)=>s+r.lambs_alive,0);
+  const survive = totalBorn>0?Math.round(totalAlive/totalBorn*100):0;
+  const avgLambing = rows.length>0?(totalBorn/rows.length).toFixed(1):0;
+  setMain(`
+<div class="page-header"><h1>Окоты / Роды</h1><p>Журнал родов, выход ягнят, состояние маток</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Всего окотов</div><div class="stat-value">${rows.length}</div></div>
+  <div class="stat"><div class="stat-label">Ягнят рождено</div><div class="stat-value green">${totalBorn}</div></div>
+  <div class="stat"><div class="stat-label">Ягнят живых</div><div class="stat-value teal">${totalAlive}</div></div>
+  <div class="stat"><div class="stat-label">Выживаемость %</div><div class="stat-value ${survive>=90?'green':survive>=75?'amber':'red'}">${survive}%</div></div>
+</div>
+${rows.length>0?`<div class="card">
+  <div class="card-head"><div class="card-title">Показатели воспроизводства</div></div>
+  <div class="two-col">
+    <div>
+      <div class="progress-row"><div class="progress-label">Выживаемость ягнят</div><div class="progress"><div class="progress-fill" style="width:${survive}%;background:var(--green-light)"></div></div><div class="progress-val" style="font-size:12px;font-weight:600">${survive}%</div></div>
+      <div class="progress-row"><div class="progress-label">Норм. роды</div><div class="progress"><div class="progress-fill" style="width:${Math.round(rows.filter(r=>r.birth_type==='normal').length/rows.length*100)}%;background:#97c459"></div></div><div class="progress-val" style="font-size:12px;font-weight:600">${Math.round(rows.filter(r=>r.birth_type==='normal').length/rows.length*100)}%</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;color:var(--text2)">Среднее кол-во ягнят на окот: <b style="color:var(--text)">${avgLambing}</b></div>
+      <div style="font-size:12px;color:var(--text2)">С ветпомощью: <b style="color:var(--amber)">${rows.filter(r=>r.vet_assisted).length}</b> из ${rows.length}</div>
+    </div>
+  </div>
+</div>`:''}
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Журнал окотов</div>
+    <button class="btn btn-sm" onclick="openSectionImport('births')">⬆ Импорт</button>
+      <button class="btn btn-sm" onclick="exportBirthExcel()">⬇ Экспорт</button>
+      <button class="btn btn-primary btn-sm" onclick="openBirthForm()">+ Зафиксировать окот</button>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Матка</th><th>Дата окота</th><th>Ягнят / живых</th><th>Тип родов</th><th>Вет. помощь</th><th>Состояние матки</th><th>Примечания</th></tr></thead>
+    <tbody>
+      ${rows.length===0 ? `<tr><td colspan="7" class="empty">Записей нет</td></tr>` :
+        rows.map(r=>`<tr>
+          <td><b>${r.mother_name||r.mother_tag||'—'}</b><br><span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${r.mother_tag||''}</span></td>
+          <td>${fmtDate(r.birth_date)}</td>
+          <td><b style="color:var(--green)">${r.lambs_alive}</b><span style="color:var(--text2)">/${r.lambs_born}</span>${r.lambs_dead>0?` <span style="color:var(--red);font-size:11px">(-${r.lambs_dead})</span>`:''}</td>
+          <td>${birthTypeBadge(r.birth_type)}</td>
+          <td>${r.vet_assisted?'<span class="badge b-amber">Да</span>':'<span class="badge b-gray">Нет</span>'}</td>
+          <td>${r.mother_condition==='good'?'<span class="badge b-green">Хорошее</span>':r.mother_condition==='weak'?'<span class="badge b-amber">Ослабленное</span>':'<span class="badge b-red">Критическое</span>'}</td>
+          <td style="font-size:12px;color:var(--text2)">${r.notes||'—'}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table></div>
+</div>`);
+}
+
+function openBirthForm() {
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Зафиксировать окот</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка матки *</label><input id="b-tag" type="text" placeholder="МО-0042"></div>
+      <div class="form-group"><label>Дата окота *</label><input id="b-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Ягнят рождено *</label><input id="b-born" type="number" min="0" value="1" oninput="updateAlive()"></div>
+      <div class="form-group"><label>Живых *</label><input id="b-alive" type="number" min="0" value="1"></div>
+      <div class="form-group"><label>Мёртворождённых</label><input id="b-dead" type="number" min="0" value="0"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Тип родов</label><select id="b-type">
+        <option value="normal">Нормальные</option>
+        <option value="difficult">Тяжёлые</option>
+        <option value="cesarean">Кесарево сечение</option>
+      </select></div>
+      <div class="form-group"><label>Состояние матки после родов</label><select id="b-mcond">
+        <option value="good">Хорошее</option>
+        <option value="weak">Ослабленное</option>
+        <option value="critical">Критическое</option>
+      </select></div>
+    </div>
+    <div class="form-group" style="margin:8px 0">
+      <label><input type="checkbox" id="b-vet"> Потребовалась ветеринарная помощь</label>
+    </div>
+    <div class="form-group"><label>Примечания</label><textarea id="b-notes" style="min-height:50px" placeholder="Особые наблюдения, масть ягнят..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveBirth()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+function updateAlive() {
+  const born = parseInt(document.getElementById('b-born').value)||0;
+  document.getElementById('b-alive').value = born;
+}
+
+async function saveBirth() {
+  const tag = document.getElementById('b-tag').value.trim();
+  const date = document.getElementById('b-date').value;
+  if (!tag||!date) { alert('Заполните обязательные поля'); return; }
+  const row = {
+    birth_date: date,
+    lambs_born: parseInt(document.getElementById('b-born').value)||0,
+    lambs_alive: parseInt(document.getElementById('b-alive').value)||0,
+    lambs_dead: parseInt(document.getElementById('b-dead').value)||0,
+    birth_type: document.getElementById('b-type').value,
+    mother_condition: document.getElementById('b-mcond').value,
+    vet_assisted: document.getElementById('b-vet').checked,
+    notes: document.getElementById('b-notes').value.trim()||null,
+  };
+  if (!demoMode) {
+    const {data:an} = await sbClient.from('animals').select('id').eq('ear_tag',tag).single();
+    if (!an) { alert('Матка не найдена'); return; }
+    row.mother_id = an.id;
+    await dbInsert('births', row);
+  }
+  closeModal(); nav('births');
+}
+
+// ============================================================
+// MILK
+// ============================================================
+async function milk() {
+  const rows = await dbFetch('milk_records');
+  const avgVol = rows.length>0?(rows.reduce((s,r)=>s+parseFloat(r.volume_liters),0)/rows.length).toFixed(2):0;
+  const avgFat = rows.filter(r=>r.fat_pct).length>0?(rows.filter(r=>r.fat_pct).reduce((s,r)=>s+parseFloat(r.fat_pct),0)/rows.filter(r=>r.fat_pct).length).toFixed(1):0;
+  setMain(`
+<div class="page-header"><h1>Молочная продуктивность</h1><p>Контрольные дойки, удои, качество молока</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Записей удоев</div><div class="stat-value">${rows.length}</div></div>
+  <div class="stat"><div class="stat-label">Ср. удой, л</div><div class="stat-value green">${avgVol}</div></div>
+  <div class="stat"><div class="stat-label">Ср. жирность, %</div><div class="stat-value amber">${avgFat}</div></div>
+  <div class="stat"><div class="stat-label">Дойных маток</div><div class="stat-value blue">${[...new Set(rows.map(r=>r.animal_id))].length}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Журнал контрольных доек</div>
+    <button class="btn btn-sm" onclick="openSectionImport('milk')">⬆ Импорт</button>
+      <button class="btn btn-sm" onclick="exportMilkExcel()">⬇ Экспорт</button>
+      <button class="btn btn-primary btn-sm" onclick="openMilkForm()">+ Добавить запись</button>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Животное</th><th>Дата</th><th>Лактация №</th><th>Удой, л</th><th>Жир %</th><th>Белок %</th><th>Сом. клетки</th></tr></thead>
+    <tbody>
+      ${rows.length===0 ? `<tr><td colspan="7" class="empty">Записей нет</td></tr>` :
+        rows.map(r=>`<tr>
+          <td><b>${r.name||r.ear_tag||'—'}</b><br><span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${r.ear_tag||''}</span></td>
+          <td>${fmtDate(r.record_date)}</td>
+          <td>${r.lactation_no}</td>
+          <td style="font-weight:600;color:var(--green)">${parseFloat(r.volume_liters).toFixed(2)}</td>
+          <td>${r.fat_pct||'—'}</td>
+          <td>${r.protein_pct||'—'}</td>
+          <td style="color:var(--text2)">${r.somatic_cells||'—'}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table></div>
+</div>`);
+}
+
+function openMilkForm() {
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Контрольная дойка</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка животного *</label><input id="ml-tag" type="text" placeholder="МО-0047"></div>
+      <div class="form-group"><label>Дата дойки *</label><input id="ml-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Удой, л *</label><input id="ml-vol" type="number" step="0.01" min="0" placeholder="2.10"></div>
+      <div class="form-group"><label>Жирность, %</label><input id="ml-fat" type="number" step="0.1" placeholder="6.5"></div>
+      <div class="form-group"><label>Белок, %</label><input id="ml-prot" type="number" step="0.1" placeholder="5.3"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>№ лактации</label><input id="ml-lact" type="number" min="1" value="1"></div>
+      <div class="form-group"><label>Сом. клетки, тыс/мл</label><input id="ml-sc" type="number"></div>
+    </div>
+    <div class="form-group" style="margin-top:8px"><label>Примечания</label><textarea id="ml-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveMilk()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+async function saveMilk() {
+  const tag = document.getElementById('ml-tag').value.trim();
+  const vol = document.getElementById('ml-vol').value;
+  if (!tag||!vol) { alert('Заполните обязательные поля'); return; }
+  const row = {
+    record_date: document.getElementById('ml-date').value,
+    volume_liters: parseFloat(vol),
+    fat_pct: parseFloat(document.getElementById('ml-fat').value)||null,
+    protein_pct: parseFloat(document.getElementById('ml-prot').value)||null,
+    lactation_no: parseInt(document.getElementById('ml-lact').value)||1,
+    somatic_cells: parseInt(document.getElementById('ml-sc').value)||null,
+    notes: document.getElementById('ml-notes').value.trim()||null,
+  };
+  if (!demoMode) {
+    const {data:an} = await sbClient.from('animals').select('id').eq('ear_tag',tag).single();
+    if (!an) { alert('Животное не найдено'); return; }
+    row.animal_id = an.id;
+    await dbInsert('milk_records', row);
+  }
+  closeModal(); nav('milk');
+}
+
+// ============================================================
+// SELECTION
+// ============================================================
+async function selection() {
+  setMain(`
+<div class="page-header"><h1>Племенной отбор</h1><p>Оценки, ЕБВ, классность, рекомендации по подбору</p></div>
+<div class="alert alert-info">Этот модуль хранит результаты оценок в таблице <b>selection_scores</b>. Добавьте первую оценку кнопкой ниже.</div>
+<div class="card">
+  <div class="card-head"><div class="card-title">Оценочная ведомость</div><div style="display:flex;gap:8px"><button class="btn btn-sm" onclick="openSectionImport('selection')">⬆ Импорт</button><button class="btn btn-sm" onclick="exportSelectionExcel()">⬇ Экспорт</button><button class="btn btn-primary btn-sm" onclick="openSelectionForm()">+ Провести оценку</button></div></div>
+  <div class="empty"><div class="empty-icon">★</div>Записей оценок пока нет</div>
+</div>`);
+}
+
+function openSelectionForm() {
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Племенная оценка животного</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка животного *</label><input id="s-tag" type="text"></div>
+      <div class="form-group"><label>Дата оценки *</label><input id="s-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Оценщик / комиссия</label><input id="s-eval" type="text"></div>
+      <div class="form-group"><label>Класс</label><select id="s-class"><option>Элита</option><option>I класс</option><option>II класс</option><option>III класс</option><option>Выбраковка</option></select></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Экстерьер (0-100)</label><input id="s-ext" type="number" min="0" max="100"></div>
+      <div class="form-group"><label>Здоровье (0-100)</label><input id="s-health" type="number" min="0" max="100"></div>
+      <div class="form-group"><label>Комплексный индекс</label><input id="s-idx" type="number" min="0" max="100"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>ЕБВ прирост массы</label><input id="s-ebvw" type="number" step="0.1" placeholder="+2.5"></div>
+      <div class="form-group"><label>ЕБВ молочность</label><input id="s-ebvm" type="number" step="0.1" placeholder="+0.8"></div>
+    </div>
+    <div class="form-group" style="margin-top:8px"><label>Примечания</label><textarea id="s-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveSelection()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+async function saveSelection() {
+  if (demoMode) { alert('Демо-режим'); return; }
+  const tag = document.getElementById('s-tag').value.trim();
+  const {data:an} = await sbClient.from('animals').select('id').eq('ear_tag',tag).single();
+  if (!an) { alert('Животное не найдено'); return; }
+  await dbInsert('selection_scores',{
+    animal_id:an.id, eval_date:document.getElementById('s-date').value,
+    evaluator:document.getElementById('s-eval').value||null,
+    exterior_score:parseInt(document.getElementById('s-ext').value)||null,
+    health_score:parseInt(document.getElementById('s-health').value)||null,
+    composite_index:parseInt(document.getElementById('s-idx').value)||null,
+    ebv_weight:parseFloat(document.getElementById('s-ebvw').value)||null,
+    ebv_milk:parseFloat(document.getElementById('s-ebvm').value)||null,
+    breed_class:document.getElementById('s-class').value,
+    notes:document.getElementById('s-notes').value||null,
+  });
+  closeModal(); nav('selection');
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+// ============================================================
+// WEIGHTS JOURNAL
+// ============================================================
+async function weights() {
+  try {
+    const {data:rows, error} = await sbClient.from('weight_records')
+      .select('*').eq('farm_id', currentFarm).order('weigh_date', {ascending:false});
+    if (error) throw error;
+    const {data:ans} = await sbClient.from('animals').select('id,ear_tag,name,breed,dob').eq('farm_id', currentFarm);
+    const anMap = {}; (ans||[]).forEach(a => anMap[a.id] = a);
+    const wr = rows||[];
+
+    const avgGain = wr.length > 1 ? (wr.reduce((s,r)=>s+Number(r.weight_kg),0)/wr.length).toFixed(1) : '—';
+    const animals_counted = [...new Set(wr.map(r=>r.animal_id))].length;
+
+    setMain(`
+<div class="page-header"><h1>Взвешивания — ${FARMS[currentFarm]}</h1><p>Динамика живой массы, графики роста</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Всего взвешиваний</div><div class="stat-value">${wr.length}</div></div>
+  <div class="stat"><div class="stat-label">Животных охвачено</div><div class="stat-value blue">${animals_counted}</div></div>
+  <div class="stat"><div class="stat-label">Средний вес, кг</div><div class="stat-value green">${avgGain}</div></div>
+  <div class="stat"><div class="stat-label">Последнее</div><div class="stat-value amber">${wr[0]?fmtDate(wr[0].weigh_date):'—'}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Журнал взвешиваний</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="w-search" type="text" placeholder="🔍 Поиск по бирке..." oninput="filterWeights()"
+        style="padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:12px;width:160px">
+      <button class="btn btn-sm" onclick="openSectionImport('weights')">⬆ Импорт</button>
+      <button class="btn btn-sm" onclick="exportWeightsExcel()">⬇ Экспорт Excel</button>
+      <button class="btn btn-primary btn-sm" onclick="openWeightForm()">+ Добавить взвешивание</button>
+    </div>
+  </div>
+  <div class="table-wrap"><table id="w-table">
+    <thead><tr><th>Животное</th><th>Дата</th><th>Вес, кг</th><th>Прирост</th><th>Возраст</th><th>Примечания</th><th></th></tr></thead>
+    <tbody id="w-tbody">${renderWeightRows(wr, anMap)}</tbody>
+  </table></div>
+</div>`);
+
+    window._weightRows = wr;
+    window._weightAnMap = anMap;
+  } catch(e) {
+    setMain(`<div class="alert alert-warning">Ошибка: ${e.message}</div>`);
+  }
+}
+
+function renderWeightRows(rows, anMap) {
+  if (!rows||rows.length===0) return '<tr><td colspan="7" class="empty">Записей нет — добавьте первое взвешивание</td></tr>';
+  // Calculate gain vs previous weighing per animal
+  const byAnimal = {};
+  rows.forEach(r => {
+    if (!byAnimal[r.animal_id]) byAnimal[r.animal_id] = [];
+    byAnimal[r.animal_id].push(r);
+  });
+  return rows.map(r => {
+    const a = anMap[r.animal_id]||{};
+    const anRecs = (byAnimal[r.animal_id]||[]).sort((a,b)=>new Date(a.weigh_date)-new Date(b.weigh_date));
+    const idx = anRecs.findIndex(x=>x.id===r.id);
+    const prev = idx > 0 ? anRecs[idx-1] : null;
+    const gain = prev ? (Number(r.weight_kg) - Number(prev.weight_kg)).toFixed(1) : null;
+    const gainHtml = gain !== null
+      ? `<span style="color:${Number(gain)>=0?'var(--green)':'var(--red)'};font-weight:500">${Number(gain)>=0?'+':''}${gain} кг</span>`
+      : '—';
+    return `<tr>
+      <td><b>${a.name||a.ear_tag||'—'}</b><br><span style="font-size:10px;color:var(--text2);font-family:var(--mono)">${a.ear_tag||''}</span></td>
+      <td>${fmtDate(r.weigh_date)}</td>
+      <td style="font-weight:600;font-size:15px">${Number(r.weight_kg).toFixed(1)}</td>
+      <td>${gainHtml}</td>
+      <td style="color:var(--text2)">${a.dob?ageStr(r.weigh_date&&a.dob?a.dob:null):'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${r.notes||'—'}</td>
+      <td style="display:flex;gap:5px">
+        <button class="btn btn-sm" onclick="showWeightChart('${r.animal_id}')">График</button>
+        <button class="btn btn-sm btn-danger" onclick="delRow('weight_records','${r.id}','weights')">Удалить</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterWeights() {
+  const q = (document.getElementById('w-search')?.value||'').toLowerCase();
+  const rows = window._weightRows||[];
+  const anMap = window._weightAnMap||{};
+  const filtered = q ? rows.filter(r => {
+    const a = anMap[r.animal_id]||{};
+    return `${a.ear_tag||''} ${a.name||''}`.toLowerCase().includes(q);
+  }) : rows;
+  const tb = document.getElementById('w-tbody');
+  if (tb) tb.innerHTML = renderWeightRows(filtered, anMap);
+}
+
+async function showWeightChart(animalId) {
+  const a = (window._weightAnMap||{})[animalId]||{};
+  const rows = (window._weightRows||[])
+    .filter(r=>r.animal_id===animalId)
+    .sort((a,b)=>new Date(a.weigh_date)-new Date(b.weigh_date));
+
+  if (rows.length < 2) {
+    alert('Нужно минимум 2 взвешивания для графика');
+    return;
+  }
+
+  const labels = rows.map(r=>fmtDate(r.weigh_date));
+  const data = rows.map(r=>Number(r.weight_kg));
+  const minW = Math.floor(Math.min(...data) * 0.9);
+  const maxW = Math.ceil(Math.max(...data) * 1.05);
+  const w = 480, h = 220, pad = {l:44,r:16,t:20,b:40};
+  const cw = w-pad.l-pad.r, ch = h-pad.t-pad.b;
+
+  const xStep = cw/(rows.length-1);
+  const yScale = v => ch - (v-minW)/(maxW-minW)*ch;
+
+  const points = rows.map((_,i) => `${pad.l+i*xStep},${pad.t+yScale(data[i])}`).join(' ');
+  const areaPoints = `${pad.l},${pad.t+ch} ${points} ${pad.l+(rows.length-1)*xStep},${pad.t+ch}`;
+
+  const dots = rows.map((r,i) => `
+    <circle cx="${pad.l+i*xStep}" cy="${pad.t+yScale(data[i])}" r="5" fill="var(--green)" stroke="var(--surface)" stroke-width="2"/>
+    <text x="${pad.l+i*xStep}" y="${pad.t+yScale(data[i])-10}" text-anchor="middle" font-size="10" fill="var(--text2)">${data[i].toFixed(1)}</text>
+  `).join('');
+
+  const xLabels = rows.map((r,i) => `
+    <text x="${pad.l+i*xStep}" y="${h-8}" text-anchor="middle" font-size="9" fill="var(--text3)">${labels[i]}</text>
+  `).join('');
+
+  const yTicks = 4;
+  const yLabels = Array.from({length:yTicks+1},(_,i)=>{
+    const v = minW + (maxW-minW)*i/yTicks;
+    const y = pad.t + ch - ch*i/yTicks;
+    return `<text x="${pad.l-6}" y="${y+4}" text-anchor="end" font-size="10" fill="var(--text3)">${v.toFixed(0)}</text>
+    <line x1="${pad.l}" y1="${y}" x2="${pad.l+cw}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>`;
+  }).join('');
+
+  openModal(`<div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <div class="modal-title">График роста — ${a.name||a.ear_tag||'—'}</div>
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">
+      Взвешиваний: ${rows.length} · Начальный вес: ${data[0]} кг · Текущий: ${data[data.length-1]} кг · 
+      Прирост: <b style="color:var(--green)">+${(data[data.length-1]-data[0]).toFixed(1)} кг</b>
+    </div>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;background:var(--surface2);border-radius:var(--radius)">
+      ${yLabels}
+      <polygon points="${areaPoints}" fill="var(--green)" opacity="0.12"/>
+      <polyline points="${points}" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linejoin="round"/>
+      ${dots}
+      ${xLabels}
+    </svg>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Закрыть</button>
+      <button class="btn btn-primary" onclick="closeModal();openWeightForm('${animalId}')">+ Добавить взвешивание</button>
+    </div>
+  </div>`);
+}
+
+function openWeightForm(preAnimalId='') {
+  openModal(`<div class="modal" style="max-width:420px">
+    <div class="modal-head"><div class="modal-title">Новое взвешивание</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка животного *</label><input id="wf-tag" placeholder="МО-0042" value="${preAnimalId?(window._weightAnMap||{})[preAnimalId]?.ear_tag||'':''}" ></div>
+      <div class="form-group"><label>Дата взвешивания *</label><input type="date" id="wf-date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Живая масса, кг *</label><input type="number" step="0.1" id="wf-weight" placeholder="42.5"></div>
+      <div class="form-group"><label>Кто взвешивал</label><input id="wf-who" placeholder="Иванов И.И."></div>
+    </div>
+    <div class="form-group" style="margin-top:4px"><label>Примечания</label><textarea id="wf-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveWeight()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+async function saveWeight() {
+  const tag = document.getElementById('wf-tag').value.trim();
+  const wt = document.getElementById('wf-weight').value;
+  if (!tag||!wt) return alert('Заполните бирку и вес');
+  const {data:an, error} = await sbClient.from('animals').select('id').eq('ear_tag',tag).single();
+  if (error||!an) return alert('Животное "'+tag+'" не найдено');
+  try {
+    await sbClient.from('weight_records').insert({
+      animal_id: an.id,
+      farm_id: currentFarm,
+      weigh_date: document.getElementById('wf-date').value,
+      weight_kg: parseFloat(wt),
+      weighed_by: document.getElementById('wf-who').value.trim()||null,
+      notes: document.getElementById('wf-notes').value.trim()||null,
+    });
+    closeModal(); nav('weights');
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+async function analytics() {
+  const [anRows, matRows, birthRows, uziRows] = await Promise.all([
+    dbFetch('animals'), dbFetch('matings'), dbFetch('births'), dbFetch('ultrasounds')
+  ]);
+
+  const breedCounts = {};
+  anRows.filter(r=>r.status==='active').forEach(r=>{ breedCounts[r.breed]=(breedCounts[r.breed]||0)+1; });
+  const breeds = Object.entries(breedCounts).sort((a,b)=>b[1]-a[1]);
+
+  const totalBorn = birthRows.reduce((s,r)=>s+(r.lambs_born||0),0);
+  const totalAlive = birthRows.reduce((s,r)=>s+(r.lambs_alive||0),0);
+  const survive = totalBorn>0?Math.round(totalAlive/totalBorn*100):0;
+  const avgLambing = birthRows.length>0?(totalBorn/birthRows.length).toFixed(2):0;
+
+  const uziPreg = uziRows.filter(r=>r.result==='pregnant').length;
+  const uziTotal = uziRows.length;
+  const conception = uziTotal>0?Math.round(uziPreg/uziTotal*100):0;
+
+  setMain(`
+<div class="page-header"><h1>Аналитика хозяйства</h1><p>Показатели воспроизводства, динамика поголовья</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Поголовье (активных)</div><div class="stat-value green">${anRows.filter(r=>r.status==='active').length}</div></div>
+  <div class="stat"><div class="stat-label">Оплодотворяемость</div><div class="stat-value ${conception>=70?'green':'amber'}">${conception}%</div></div>
+  <div class="stat"><div class="stat-label">Ягнят на окот</div><div class="stat-value blue">${avgLambing}</div></div>
+  <div class="stat"><div class="stat-label">Сохранность ягнят</div><div class="stat-value ${survive>=90?'green':survive>=75?'amber':'red'}">${survive}%</div></div>
+</div>
+<div class="two-col">
+  <div class="card">
+    <div class="card-head"><div class="card-title">Состав стада по породам</div></div>
+    <div class="bar-chart">
+      ${breeds.map(([breed,count])=>`
+      <div class="bar-col">
+        <div class="bar-val" style="color:var(--green)">${count}</div>
+        <div class="bar-fill" style="height:${Math.round(count/Math.max(...breeds.map(b=>b[1]))*100)}px;background:var(--green-light)"></div>
+        <div class="bar-lbl">${breed}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Показатели воспроизводства</div></div>
+    <div class="progress-row"><div class="progress-label">Оплодотворяемость</div><div class="progress"><div class="progress-fill" style="width:${conception}%;background:var(--green-light)"></div></div><b style="font-size:13px;min-width:36px">${conception}%</b></div>
+    <div class="progress-row"><div class="progress-label">Сохранность ягнят</div><div class="progress"><div class="progress-fill" style="width:${survive}%;background:#97c459"></div></div><b style="font-size:13px;min-width:36px">${survive}%</b></div>
+    <div class="progress-row"><div class="progress-label">Норм. роды</div><div class="progress"><div class="progress-fill" style="width:${birthRows.length>0?Math.round(birthRows.filter(r=>r.birth_type==='normal').length/birthRows.length*100):0}%;background:#c0dd97"></div></div><b style="font-size:13px;min-width:36px">${birthRows.length>0?Math.round(birthRows.filter(r=>r.birth_type==='normal').length/birthRows.length*100):0}%</b></div>
+    <div style="margin-top:14px;font-size:12px;color:var(--text2)">
+      Случек записано: <b style="color:var(--text)">${matRows.length}</b> ·
+      УЗИ проведено: <b style="color:var(--text)">${uziTotal}</b> ·
+      Окотов: <b style="color:var(--text)">${birthRows.length}</b>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-head"><div class="card-title">Структура стада по полу и возрасту</div></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Категория</th><th>Романовская</th><th>Меринос</th><th>Дорпер</th><th>Итого</th></tr></thead>
+    <tbody>
+      ${[['Маток (Ж, активных)','Ж'],['Баранов (М, активных)','М']].map(([label,sex])=>{
+        const active = anRows.filter(r=>r.sex===sex&&r.status==='active');
+        const rom = active.filter(r=>r.breed==='Романовская').length;
+        const mer = active.filter(r=>r.breed==='Меринос').length;
+        const dor = active.filter(r=>r.breed==='Дорпер').length;
+        return `<tr><td>${label}</td><td>${rom}</td><td>${mer}</td><td>${dor}</td><td><b>${active.length}</b></td></tr>`;
+      }).join('')}
+      <tr style="background:var(--surface2)"><td><b>Всего активных</b></td>
+        ${['Романовская','Меринос','Дорпер'].map(b=>`<td><b>${anRows.filter(r=>r.breed===b&&r.status==='active').length}</b></td>`).join('')}
+        <td><b>${anRows.filter(r=>r.status==='active').length}</b></td>
+      </tr>
+    </tbody>
+  </table></div>
+</div>`);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+(function init() {
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+  if (url && key) {
+    document.getElementById('sb-url').value = url;
+    document.getElementById('sb-key').value = key;
+    setTimeout(function() {
+      try {
+        const sb = window.supabase || window.Supabase;
+        if (!sb) { document.getElementById('setup-screen').style.display='flex'; return; }
+        sbClient = sb.createClient(url, key);
+        startApp();
+      } catch(e) { document.getElementById('setup-screen').style.display='flex'; }
+    }, 300);
+  } else {
+    // No saved keys — show setup screen
+    document.getElementById('setup-screen').style.display='flex';
+  }
+})();
+
+function openBotSheet() {
+  // Populate farm list
+  const fl = document.getElementById('bot-farm-list');
+  if (fl) {
+    fl.innerHTML = FARMS_LIST.map((f,i) => `
+      <div class="bot-sheet-item ${f.id===currentFarm?'on':''}" onclick="switchFarm('${f.id}');closeBotSheet()">
+        <span style="width:10px;height:10px;border-radius:50%;background:${farmColor(i)};flex-shrink:0;display:inline-block"></span>
+        ${f.name}
+      </div>`).join('');
+  }
+  document.getElementById('bot-overlay').classList.add('show');
+  document.getElementById('bot-sheet').classList.add('show');
+}
+function closeBotSheet() {
+  document.getElementById('bot-overlay').classList.remove('show');
+  document.getElementById('bot-sheet').classList.remove('show');
+}
+function updateBotNav(page) {
+  const map = {animals:'bn-animals', matings:'bn-matings', births:'bn-births', vet:'bn-vet'};
+  document.querySelectorAll('.bot-nav-item').forEach(b => b.classList.remove('on'));
+  if (map[page]) {
+    const btn = document.getElementById(map[page]);
+    if (btn) btn.classList.add('on');
+  }
+}
+
+// ── MOBILE ──
+function toggleMobMenu() {
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('mob-overlay');
+  if (!sb) return;
+  const isOpen = sb.classList.contains('mob-open');
+  if (isOpen) {
+    sb.classList.remove('mob-open');
+    sb.style.cssText = '';
+    if (ov) { ov.classList.remove('show'); ov.style.display = ''; }
+  } else {
+    sb.classList.add('mob-open');
+    sb.style.display = 'flex';
+    sb.style.flexDirection = 'column';
+    if (ov) { ov.classList.add('show'); ov.style.display = 'block'; }
+  }
+}
+function closeMobMenu() {
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('mob-overlay');
+  if (sb) { sb.classList.remove('mob-open'); sb.style.cssText = ''; }
+  if (ov) { ov.classList.remove('show'); ov.style.display = ''; }
+}
+
+// ── FARMS ──
+function renderFarmSwitcher() {
+  const sw = document.getElementById('farm-switcher');
+  if (!sw) return;
+  sw.innerHTML = '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Хозяйство</div>' +
+    FARMS_LIST.map((f,i)=>`<div class="farm-row" id="fr-${f.id}">
+      <button class="farm-btn ${f.id===currentFarm?'active':''}" onclick="switchFarm('${f.id}')">
+        <span class="farm-dot" style="background:${farmColor(i)}"></span><span>${f.name}</span>
+      </button>
+      <div class="farm-row-actions">
+        <button class="farm-action-btn" onclick="renameFarm('${f.id}')">✏</button>
+        ${FARMS_LIST.length>1?`<button class="farm-action-btn" onclick="deleteFarm('${f.id}')">×</button>`:''}
+      </div>
+    </div>`).join('') +
+    '<button class="farm-add-btn" onclick="addFarm()">+ Добавить хозяйство</button>';
+}
+
+function switchFarm(farm) {
+  currentFarm = farm;
+  localStorage.setItem('current_farm', farm);
+  renderFarmSwitcher();
+  const name = FARMS[farm];
+  document.getElementById('farm-name').textContent = name;
+  const ml = document.getElementById('mob-farm-label');
+  if (ml) ml.textContent = name;
+  closeMobMenu();
+  nav(currentPage || 'animals');
+}
+
+function initFarmUI() {
+  if (!FARMS_LIST.find(f=>f.id===currentFarm)) {
+    currentFarm = FARMS_LIST[0]?.id || 'luzino';
+    localStorage.setItem('current_farm', currentFarm);
+  }
+  renderFarmSwitcher();
+  const name = FARMS[currentFarm] || currentFarm;
+  document.getElementById('farm-name').textContent = name;
+  const ml = document.getElementById('mob-farm-label');
+  if (ml) ml.textContent = name;
+}
+
+function addFarm() {
+  openModal(`<div class="modal" style="max-width:360px">
+    <div class="modal-head"><div class="modal-title">Новое хозяйство</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Название</label>
+      <input id="new-farm-name" type="text" placeholder="Например: Степное"
+        style="width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:14px"
+        onkeydown="if(event.key===\'Enter\')saveNewFarm()">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveNewFarm()">Создать</button>
+    </div>
+  </div>`);
+  setTimeout(()=>document.getElementById('new-farm-name')?.focus(), 100);
+}
+function saveNewFarm() {
+  const name = document.getElementById('new-farm-name').value.trim();
+  if (!name) return;
+  const id = 'farm_' + Date.now();
+  FARMS_LIST.push({id, name});
+  saveFarms(FARMS_LIST);
+  closeModal();
+  switchFarm(id);
+}
+function renameFarm(id) {
+  const farm = FARMS_LIST.find(f=>f.id===id); if (!farm) return;
+  openModal(`<div class="modal" style="max-width:360px">
+    <div class="modal-head"><div class="modal-title">Переименовать</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-group" style="margin-bottom:16px">
+      <input id="rename-inp" type="text" value="${farm.name}"
+        style="width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:14px"
+        onkeydown="if(event.key===\'Enter\')saveRename('${id}')">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveRename('${id}')">Сохранить</button>
+    </div>
+  </div>`);
+  setTimeout(()=>{const i=document.getElementById('rename-inp');if(i){i.focus();i.select();}},100);
+}
+function saveRename(id) {
+  const name = document.getElementById('rename-inp').value.trim(); if (!name) return;
+  FARMS_LIST = FARMS_LIST.map(f=>f.id===id?{...f,name}:f);
+  saveFarms(FARMS_LIST); closeModal(); renderFarmSwitcher();
+  if (id===currentFarm) { document.getElementById('farm-name').textContent=name; const ml=document.getElementById('mob-farm-label');if(ml)ml.textContent=name; }
+}
+function deleteFarm(id) {
+  const farm = FARMS_LIST.find(f=>f.id===id); if (!farm) return;
+  if (!confirm(`Удалить хозяйство "${farm.name}"?\nДанные в Supabase останутся.`)) return;
+  FARMS_LIST = FARMS_LIST.filter(f=>f.id!==id); saveFarms(FARMS_LIST);
+  if (currentFarm===id) switchFarm(FARMS_LIST[0].id); else renderFarmSwitcher();
+}
+
+// ── ANIMAL MAP CACHE ──
+let _anMap=null, _anTs=0;
+async function getAnimalMap() {
+  if (_anMap && Date.now()-_anTs<30000) return _anMap;
+  const rows = await dbFetch('animals');
+  _anMap={}; rows.forEach(r=>_anMap[r.id]=r); _anTs=Date.now();
+  return _anMap;
+}
+function invAnMap() { _anMap=null; }
+
+// ── SEARCH & FILTER ──
+function renderAnimalRows(rows) {
+  if (rows.length===0) return '<tr><td colspan="10" class="empty">Ничего не найдено</td></tr>';
+  return rows.map(a=>`<tr id="row-${a.id}">
+    <td class="cb-col"><input type="checkbox" class="row-cb" value="${a.id}" onchange="onCbChange()"></td>
+    <td style="font-family:var(--mono);font-size:12px">${a.ear_tag}</td>
+    <td><b>${a.name||'—'}</b></td>
+    <td>${a.sex==='М'?'♂ Самец':'♀ Самка'}</td>
+    <td>${a.breed}</td>
+    <td>${fmtDate(a.dob)}</td>
+    <td style="color:var(--text2)">${ageStr(a.dob)}</td>
+    <td>${a.weight_kg||'—'}</td>
+    <td>${statusBadge(a.status)}</td>
+    <td style="display:flex;gap:5px">
+      <button class="btn btn-sm" onclick="viewAnimal('${a.id}')">Карточка</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteAnimal('${a.id}')">Удалить</button>
+    </td>
+  </tr>`).join('');
+}
+
+function filterAnimals() {
+  const q=(document.getElementById('search-input')?.value||'').toLowerCase().trim();
+  const sex=document.getElementById('filter-sex')?.value||'';
+  const breed=document.getElementById('filter-breed')?.value||'';
+  const status=document.getElementById('filter-status')?.value||'';
+  const all=window._animalRows||[];
+  const filtered=all.filter(a=>{
+    if(sex&&a.sex!==sex)return false;
+    if(breed&&a.breed!==breed)return false;
+    if(status&&a.status!==status)return false;
+    if(q&&!`${a.ear_tag} ${a.name||''} ${a.breed} ${a.color||''}`.toLowerCase().includes(q))return false;
+    return true;
+  });
+  const tbody=document.getElementById('animals-tbody');
+  if(tbody)tbody.innerHTML=renderAnimalRows(filtered);
+  const cnt=document.getElementById('filter-count');
+  if(cnt)cnt.textContent=`Показано: ${filtered.length} из ${all.length}`;
+}
+function resetFilters() {
+  ['search-input','filter-sex','filter-breed','filter-status'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  filterAnimals();
+}
+
+// ── CHECKBOXES ──
+function toggleAll(cb) {
+  document.querySelectorAll('.row-cb').forEach(c=>c.checked=cb.checked);
+  onCbChange();
+}
+function onCbChange() {
+  const checked=document.querySelectorAll('.row-cb:checked');
+  const bar=document.getElementById('bulk-bar');
+  const total=document.querySelectorAll('.row-cb').length;
+  if(checked.length>0){bar&&bar.classList.add('show');const bc=document.getElementById('bulk-count');if(bc)bc.textContent=checked.length+' выбрано';}
+  else{bar&&bar.classList.remove('show');}
+  const cbAll=document.getElementById('cb-all');
+  if(cbAll){cbAll.indeterminate=checked.length>0&&checked.length<total;if(checked.length===total&&total>0)cbAll.checked=true;}
+}
+function clearSelection() {
+  document.querySelectorAll('.row-cb').forEach(c=>c.checked=false);
+  const cbAll=document.getElementById('cb-all');if(cbAll)cbAll.checked=false;
+  onCbChange();
+}
+
+// ── DELETE WITH TRASH ──
+function confirmDelete(count) {
+  return new Promise(resolve => {
+    const word=count===1?'животное':count<5?'животных':'животных';
+    openModal(`<div class="modal" style="max-width:380px">
+      <div class="modal-head"><div class="modal-title">Подтвердить удаление</div><button class="close-btn" onclick="closeModal();window._dr&&window._dr(false)">×</button></div>
+      <p style="font-size:14px;margin-bottom:6px">Переместить <b>${count} ${word}</b> в корзину?</p>
+      <p style="font-size:13px;color:var(--text2)">Восстановить можно в течение 30 дней.</p>
+      <div class="modal-footer">
+        <button class="btn" style="min-width:80px" onclick="closeModal();window._dr&&window._dr(false)">Нет</button>
+        <button class="btn btn-danger" style="min-width:80px" onclick="closeModal();window._dr&&window._dr(true)">Да, удалить</button>
+      </div>
+    </div>`);
+    window._dr=resolve;
+  });
+}
+async function deleteAnimal(id) {
+  const checked=[...document.querySelectorAll('.row-cb:checked')].map(c=>c.value);
+  const ids=checked.length>0?[...new Set([...checked,id])]:[id];
+
+  // Check if any are external - those get deleted permanently, not to trash
+  const {data:toDelete}=await sbClient.from('animals').select('id,status').in('id',ids);
+  const externals=(toDelete||[]).filter(a=>a.status==='external').map(a=>a.id);
+  const regulars=ids.filter(i=>!externals.includes(i));
+
+  if(!await confirmDelete(ids.length))return;
+  try {
+    const dt=new Date().toISOString();
+    if(regulars.length>0){
+      const {error}=await sbClient.from('animals').update({status:'deleted',deleted_at:dt}).in('id',regulars);
+      if(error)throw error;
+    }
+    if(externals.length>0){
+      const {error}=await sbClient.from('animals').delete().in('id',externals);
+      if(error)throw error;
+    }
+    invAnMap();
+    ids.forEach(aid=>{const row=document.getElementById('row-'+aid);if(row)row.remove();});
+    window._animalRows=(window._animalRows||[]).filter(a=>!ids.includes(a.id));
+    const cnt=document.getElementById('filter-count');
+    if(cnt)cnt.textContent=`Показано: ${window._animalRows.length} из ${window._animalRows.length}`;
+    onCbChange();
+    // Если открыта карточка — вернуться к списку
+    if(!document.getElementById('animals-tbody')) nav('animals');
+  } catch(e){alert('Ошибка: '+e.message);}
+}
+
+async function bulkDelete() {
+  const checked=[...document.querySelectorAll('.row-cb:checked')].map(c=>c.value);
+  if(checked.length===0)return;
+  if(!await confirmDelete(checked.length))return;
+  try {
+    const dt=new Date().toISOString();
+    const {error}=await sbClient.from('animals').update({status:'deleted',deleted_at:dt}).in('id',checked);
+    if(error)throw error;
+    invAnMap();
+    checked.forEach(id=>{const row=document.getElementById('row-'+id);if(row)row.remove();});
+    window._animalRows=(window._animalRows||[]).filter(a=>!checked.includes(a.id));
+    const cnt=document.getElementById('filter-count');
+    if(cnt)cnt.textContent=`Показано: ${window._animalRows.length} из ${window._animalRows.length}`;
+    clearSelection();
+    const bar=document.getElementById('bulk-bar');if(bar)bar.classList.remove('show');
+  } catch(e){alert('Ошибка: '+e.message);}
+}
+async function openTrash() {
+  const {data:rows}=await sbClient.from('animals').select('*').eq('farm_id',currentFarm).eq('status','deleted');
+  const trash=(rows||[]).filter(r=>{if(!r.deleted_at)return true;return(Date.now()-new Date(r.deleted_at))/(1000*60*60*24)<30;});
+  openModal(`<div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <div class="modal-title">Корзина (${trash.length})</div>
+      <button class="close-btn" onclick="closeModal();refreshAnimalsPage()">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:10px">Хранятся 30 дней. Выдели нужных и восстанови.</p>
+    ${trash.length===0?'<div class="empty">Корзина пуста</div>':`
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>
+        <th style="padding:8px;border-bottom:0.5px solid var(--border);width:32px"><input type="checkbox" id="trash-cb-all" onchange="trashToggleAll(this)"></th>
+        <th style="text-align:left;padding:8px;border-bottom:0.5px solid var(--border);color:var(--text2);font-size:11px">Бирка</th>
+        <th style="text-align:left;padding:8px;border-bottom:0.5px solid var(--border);color:var(--text2);font-size:11px">Кличка</th>
+        <th style="text-align:left;padding:8px;border-bottom:0.5px solid var(--border);color:var(--text2);font-size:11px">Порода</th>
+        <th style="text-align:left;padding:8px;border-bottom:0.5px solid var(--border);color:var(--text2);font-size:11px">Удалено</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${trash.map(a=>`<tr id="trash-row-${a.id}">
+        <td style="padding:8px;border-bottom:0.5px solid var(--border)"><input type="checkbox" class="trash-cb" value="${a.id}"></td>
+        <td style="padding:8px;border-bottom:0.5px solid var(--border);font-family:var(--mono);font-size:11px">${a.ear_tag}</td>
+        <td style="padding:8px;border-bottom:0.5px solid var(--border)">${a.name||'—'}</td>
+        <td style="padding:8px;border-bottom:0.5px solid var(--border)">${a.breed}</td>
+        <td style="padding:8px;border-bottom:0.5px solid var(--border);font-size:11px;color:var(--text2)">${a.deleted_at?fmtDate(a.deleted_at):'—'}</td>
+        <td style="padding:8px;border-bottom:0.5px solid var(--border)">
+          <button class="btn btn-sm" style="color:var(--green)" onclick="restoreAnimal('${a.id}')">Восстановить</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table></div>`}
+    <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${trash.length>0?`
+        <button class="btn btn-sm" style="color:var(--green)" onclick="restoreSelected()">✓ Восстановить выбранных</button>
+        <button class="btn btn-sm" style="color:var(--green)" onclick="restoreAll()">✓ Восстановить все</button>
+        <button class="btn btn-danger" onclick="clearTrash()">🗑 Очистить корзину</button>`:''}
+      </div>
+      <button class="btn" onclick="closeModal();refreshAnimalsPage()">Закрыть</button>
+    </div>
+  </div>`);
+}
+
+function trashToggleAll(cb) {
+  document.querySelectorAll('.trash-cb').forEach(c=>c.checked=cb.checked);
+}
+
+async function restoreAnimal(id) {
+  const btn = event.target;
+  btn.disabled=true; btn.textContent='...';
+  await sbClient.from('animals').update({status:'active',deleted_at:null}).eq('id',id);
+  // Remove row from table without reopening modal
+  const row = document.getElementById('trash-row-'+id);
+  if (row) row.remove();
+  // Update count in title
+  const rows = document.querySelectorAll('.trash-cb');
+  const title = document.querySelector('.modal-title');
+  if (title) title.textContent = `Корзина (${rows.length})`;
+  // Queue background refresh
+  window._needRefresh = true;
+}
+
+async function restoreSelected() {
+  const ids = [...document.querySelectorAll('.trash-cb:checked')].map(c=>c.value);
+  if (ids.length===0) return alert('Выдели животных галочками');
+  await sbClient.from('animals').update({status:'active',deleted_at:null}).in('id',ids);
+  ids.forEach(id=>{ const r=document.getElementById('trash-row-'+id); if(r)r.remove(); });
+  const title = document.querySelector('.modal-title');
+  const remaining = document.querySelectorAll('.trash-cb').length;
+  if (title) title.textContent = `Корзина (${remaining})`;
+  window._needRefresh = true;
+}
+
+async function restoreAll() {
+  const ids = [...document.querySelectorAll('.trash-cb')].map(c=>c.value);
+  if (ids.length===0) return;
+  await sbClient.from('animals').update({status:'active',deleted_at:null}).in('id',ids);
+  closeModal();
+  refreshAnimalsPage();
+}
+
+async function clearTrash() {
+  if(!confirm('Удалить всех из корзины навсегда?'))return;
+  await sbClient.from('animals').delete().eq('status','deleted').eq('farm_id',currentFarm);
+  closeModal();
+  refreshAnimalsPage();
+}
+
+async function refreshAnimalsPage() {
+  if (currentPage==='animals') await animals();
+  window._needRefresh = false;
+}
+
+// ── VET JOURNAL ──
+async function vet() {
+  try {
+    const{data:rows,error:e1}=await sbClient.from('vet_records').select('*').eq('farm_id',currentFarm).order('record_date',{ascending:false});
+    if(e1)throw e1;
+    const{data:ans}=await sbClient.from('animals').select('id,ear_tag,name').eq('farm_id',currentFarm);
+    const anMap={}; (ans||[]).forEach(a=>anMap[a.id]=a);
+    const vr=rows||[];
+    const TB={vaccination:'<span class="badge b-blue">Вакцинация</span>',treatment:'<span class="badge b-red">Лечение</span>',deworming:'<span class="badge b-green">Дегельминтизация</span>',hoof:'<span class="badge b-amber">Копыта</span>',other:'<span class="badge b-x">Прочее</span>'};
+    const SB2={done:'<span class="badge b-green">Выполнено</span>',planned:'<span class="badge b-amber">Запланировано</span>',cancelled:'<span class="badge b-x">Отменено</span>'};
+    const planned=vr.filter(r=>r.status==='planned').length;
+    const thisM=vr.filter(r=>{if(!r.record_date)return false;const d=new Date(r.record_date),n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();}).length;
+    window._vetRows=vr; window._vetAnMap=anMap; window._vetTB=TB; window._vetSB=SB2;
+    setMain(`
+<div class="page-header"><h1>Ветеринарный журнал — ${FARMS[currentFarm]}</h1><p>Прививки, лечение, обработки, плановые процедуры</p></div>
+${planned>0?`<div class="alert alert-warning">Запланировано: <b>${planned}</b> процедур</div>`:''}
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Всего записей</div><div class="stat-value">${vr.length}</div></div>
+  <div class="stat"><div class="stat-label">Вакцинаций</div><div class="stat-value blue">${vr.filter(r=>r.type==='vaccination').length}</div></div>
+  <div class="stat"><div class="stat-label">Лечений</div><div class="stat-value red">${vr.filter(r=>r.type==='treatment').length}</div></div>
+  <div class="stat"><div class="stat-label">В этом месяце</div><div class="stat-value green">${thisM}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Журнал процедур</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <select id="vf-type" onchange="filterVet()" style="padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:12px">
+        <option value="">Все типы</option>
+        <option value="vaccination">Вакцинация</option>
+        <option value="treatment">Лечение</option>
+        <option value="deworming">Дегельминтизация</option>
+        <option value="hoof">Копыта</option>
+        <option value="other">Прочее</option>
+      </select>
+      <select id="vf-status" onchange="filterVet()" style="padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:12px">
+        <option value="">Все статусы</option>
+        <option value="done">Выполнено</option>
+        <option value="planned">Запланировано</option>
+      </select>
+      <button class="btn btn-sm" onclick="openSectionImport('vet')">⬆ Импорт</button>
+      <button class="btn btn-sm" onclick="exportVetExcel()">⬇ Экспорт Excel</button>
+      <button class="btn btn-primary btn-sm" onclick="openVetForm()">+ Добавить запись</button>
+    </div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Животное</th><th>Дата</th><th>Тип</th><th>Процедура</th><th>Препарат</th><th>Доза</th><th>Ветеринар</th><th>След. процедура</th><th>Статус</th><th>Примечания</th><th></th></tr></thead>
+    <tbody id="vet-tbody">${renderVetRows(vr,anMap,TB,SB2)}</tbody>
+  </table></div>
+</div>`);
+  } catch(e) { setMain(`<div class="alert alert-warning">Ошибка: ${e.message}</div>`); }
+}
+function renderVetRows(rows,anMap,TB,SB2) {
+  if(!rows||rows.length===0)return'<tr><td colspan="11" class="empty">Записей нет — нажмите «+ Добавить запись»</td></tr>';
+  return rows.map(r=>{const a=anMap[r.animal_id]||{};return`<tr>
+    <td><b>${a.name||a.ear_tag||'—'}</b><br><span style="font-size:10px;color:var(--text2);font-family:var(--mono)">${a.ear_tag||''}</span></td>
+    <td>${fmtDate(r.record_date)}</td><td>${TB[r.type]||r.type}</td>
+    <td style="font-weight:500">${r.procedure_name||'—'}</td>
+    <td>${r.drug_name||'—'}</td><td style="color:var(--text2)">${r.dose||'—'}</td>
+    <td style="color:var(--text2)">${r.vet_name||'—'}</td>
+    <td style="color:var(--text2)">${fmtDate(r.next_date)}</td>
+    <td>${SB2[r.status]||r.status}</td>
+    <td style="font-size:11px;color:var(--text2)">${r.notes||'—'}</td>
+    <td><button class="btn btn-sm btn-danger" onclick="delVet('${r.id}')">Удалить</button></td>
+  </tr>`;}).join('');
+}
+function filterVet() {
+  const t=document.getElementById('vf-type')?.value||'';
+  const s=document.getElementById('vf-status')?.value||'';
+  const filtered=(window._vetRows||[]).filter(r=>{if(t&&r.type!==t)return false;if(s&&r.status!==s)return false;return true;});
+  const tb=document.getElementById('vet-tbody');
+  if(tb)tb.innerHTML=renderVetRows(filtered,window._vetAnMap,window._vetTB,window._vetSB);
+}
+async function delVet(id) {
+  if(!confirm('Удалить запись?'))return;
+  await sbClient.from('vet_records').delete().eq('id',id);
+  nav('vet');
+}
+function openVetForm() {
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Новая запись в вет. журнал</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка животного *</label><input id="vt-tag" placeholder="МО-0042"></div>
+      <div class="form-group"><label>Дата *</label><input type="date" id="vt-date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Тип *</label><select id="vt-type">
+        <option value="vaccination">Вакцинация</option>
+        <option value="treatment">Лечение</option>
+        <option value="deworming">Дегельминтизация</option>
+        <option value="hoof">Обработка копыт</option>
+        <option value="other">Прочее</option>
+      </select></div>
+      <div class="form-group"><label>Статус</label><select id="vt-status">
+        <option value="done">Выполнено</option>
+        <option value="planned">Запланировано</option>
+        <option value="cancelled">Отменено</option>
+      </select></div>
+    </div>
+    <div class="form-group" style="margin-bottom:11px"><label>Процедура / Диагноз *</label><input id="vt-proc" placeholder="Вакцинация против ящура"></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Препарат / Вакцина</label><input id="vt-drug" placeholder="Ящур-комби"></div>
+      <div class="form-group"><label>Доза</label><input id="vt-dose" placeholder="2 мл"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Ветеринар</label><input id="vt-vet" placeholder="Иванов И.И."></div>
+      <div class="form-group"><label>Следующая процедура</label><input type="date" id="vt-next"></div>
+    </div>
+    <div class="form-group" style="margin-top:4px"><label>Примечания</label><textarea id="vt-notes" style="min-height:55px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveVet()">Сохранить</button>
+    </div>
+  </div>`);
+}
+async function saveVet() {
+  const tag=document.getElementById('vt-tag').value.trim();
+  const proc=document.getElementById('vt-proc').value.trim();
+  if(!tag||!proc)return alert('Заполните бирку и процедуру');
+  const{data:an,error}=await sbClient.from('animals').select('id').eq('ear_tag',tag).single();
+  if(error||!an)return alert('Животное "'+tag+'" не найдено');
+  try {
+    await sbClient.from('vet_records').insert({
+      animal_id:an.id, farm_id:currentFarm,
+      record_date:document.getElementById('vt-date').value,
+      type:document.getElementById('vt-type').value,
+      status:document.getElementById('vt-status').value,
+      procedure_name:proc,
+      drug_name:document.getElementById('vt-drug').value.trim()||null,
+      dose:document.getElementById('vt-dose').value.trim()||null,
+      vet_name:document.getElementById('vt-vet').value.trim()||null,
+      next_date:document.getElementById('vt-next').value||null,
+      notes:document.getElementById('vt-notes').value.trim()||null,
+    });
+    closeModal(); nav('vet');
+  } catch(e){alert('Ошибка: '+e.message);}
+}
+
+// ── EXCEL IMPORT ──
+let xlsxRows=[], xlsxHeaders=[];
+function openImportModal() {
+  const opts=FARMS_LIST.map(f=>`<option value="${f.id}" ${f.id===currentFarm?'selected':''}>${f.name}</option>`).join('');
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Импорт животных из Excel</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Дубликаты по бирке обновляются, не дублируются.</p>
+    <div class="form-group" style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px;display:block">В какое хозяйство?</label>
+      <select id="xl-farm" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:13px">${opts}</select>
+    </div>
+    <div id="xl-drop" style="border:1.5px dashed var(--border2);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;color:var(--text2)"
+      onclick="document.getElementById('xl-file').click()"
+      ondragover="event.preventDefault();this.style.borderColor='var(--green)'"
+      ondragleave="this.style.borderColor=''"
+      ondrop="event.preventDefault();this.style.borderColor='';xlDrop(event)">
+      <div style="font-size:32px;margin-bottom:8px;pointer-events:none">📂</div>
+      <div style="font-size:14px;font-weight:500;pointer-events:none">Нажми или перетащи файл .xlsx</div>
+    </div>
+    <input type="file" id="xl-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="xlFile(this)">
+    <div id="xl-mapping" style="display:none;margin-top:14px"></div>
+    <div id="xl-progress" style="display:none;margin-top:10px">
+      <div id="xl-pt" style="font-size:13px;color:var(--text2);margin-bottom:4px"></div>
+      <div style="background:var(--surface2);border-radius:20px;height:7px;overflow:hidden"><div id="xl-pb" style="height:100%;background:var(--green);border-radius:20px;transition:width .2s;width:0%"></div></div>
+    </div>
+    <div class="modal-footer" id="xl-footer" style="display:none">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" id="xl-btn" onclick="runImport()">Импортировать</button>
+    </div>
+  </div>`);
+}
+function xlDrop(e){const f=e.dataTransfer?.files?.[0];if(f)xlProcess(f);}
+async function xlFile(inp){const f=inp.files[0];if(f)xlProcess(f);}
+async function xlProcess(file) {
+  await new Promise((res,rej)=>{if(window.XLSX)return res();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=res;s.onerror=()=>rej(new Error('Ошибка'));document.head.appendChild(s);});
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(data.length<2)return alert('Файл пустой');
+    xlsxHeaders=data[0].map(String);
+    xlsxRows=data.slice(1).filter(r=>r.some(c=>c!==''));
+    const dz=document.getElementById('xl-drop');
+    if(dz)dz.innerHTML=`<div style="font-size:20px;margin-bottom:6px">✅</div><div style="font-size:13px;font-weight:500">${file.name}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Строк: ${xlsxRows.length}</div>`;
+    renderXlMapping();
+  };
+  reader.readAsArrayBuffer(file);
+}
+function renderXlMapping() {
+  const fields=[{key:'ear_tag',label:'Ушная бирка *'},{key:'name',label:'Кличка'},{key:'sex',label:'Пол (М/Ж)'},{key:'breed',label:'Порода'},{key:'dob',label:'Дата рождения'},{key:'weight_kg',label:'Живая масса'},{key:'color',label:'Масть'},{key:'mother_tag',label:'Бирка матери'},{key:'father_tag',label:'Бирка отца'}];
+  const opts=['— не импортировать —',...xlsxHeaders].map(h=>`<option>${h}</option>`).join('');
+  const prev=xlsxRows.slice(0,3).map(r=>r.slice(0,6).join(' | ')).join('\n');
+  document.getElementById('xl-mapping').style.display='block';
+  document.getElementById('xl-mapping').innerHTML=`<div style="font-size:12px;color:var(--text2);background:var(--surface2);padding:10px;border-radius:var(--radius);margin-bottom:10px;font-family:var(--mono);font-size:11px">${prev}</div>`+
+    fields.map(f=>`<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;align-items:center;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--text2)">${f.label}</span>
+      <select id="xm-${f.key}" style="padding:5px 8px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:12px">${opts}</select>
+    </div>`).join('');
+  const auto={ear_tag:['бирка','номер','tag','id'],name:['кличка','имя','name'],sex:['пол','sex'],breed:['порода','breed'],dob:['дата','рождения','dob','birth'],weight_kg:['масса','вес','weight'],color:['масть','цвет','color'],mother_tag:['мать','матка','mother'],father_tag:['отец','баран','father']};
+  for(const[key,kws]of Object.entries(auto)){const s=document.getElementById('xm-'+key);const m=xlsxHeaders.find(h=>kws.some(k=>h.toLowerCase().includes(k)));if(m&&s)s.value=m;}
+  document.getElementById('xl-footer').style.display='flex';
+}
+async function runImport() {
+  const gm=k=>{const v=document.getElementById('xm-'+k)?.value;return(v&&v!=='— не импортировать —')?xlsxHeaders.indexOf(v):-1;};
+  const ti=gm('ear_tag');if(ti===-1)return alert('Укажи колонку с ушной биркой');
+  const farm=document.getElementById('xl-farm')?.value||currentFarm;
+  const btn=document.getElementById('xl-btn');btn.disabled=true;btn.textContent='Импорт...';
+  document.getElementById('xl-progress').style.display='block';
+  const fm={ear_tag:ti,name:gm('name'),sex:gm('sex'),breed:gm('breed'),dob:gm('dob'),weight_kg:gm('weight_kg'),color:gm('color'),mother_tag:gm('mother_tag'),father_tag:gm('father_tag')};
+  let ok=0,skip=0,errors=0;
+  for(let i=0;i<xlsxRows.length;i++){
+    const row=xlsxRows[i];
+    const tag=String(row[fm.ear_tag]||'').trim();if(!tag){skip++;continue;}
+    let dob=null;
+    if(fm.dob!==-1&&row[fm.dob]){const raw=row[fm.dob];if(typeof raw==='number'){const d=new Date(Math.round((raw-25569)*86400000));dob=d.toISOString().split('T')[0];}else{const p=String(raw).split(/[.\-\/]/);if(p.length===3){const[a,b,c]=p;dob=c.length===4?`${c}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`:`${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;}}};
+    let sex='Ж';if(fm.sex!==-1){const s=String(row[fm.sex]||'').toUpperCase().trim();sex=(s==='М'||s==='M'||s==='САМЕЦ'||s==='БАРАН'||s==='КОЗЁЛ')?'М':'Ж';}
+    const animal={ear_tag:tag,name:fm.name!==-1?String(row[fm.name]||'').trim()||null:null,sex,breed:fm.breed!==-1?String(row[fm.breed]||'').trim()||'Другая':'Другая',dob,weight_kg:fm.weight_kg!==-1?parseFloat(row[fm.weight_kg])||null:null,color:fm.color!==-1?String(row[fm.color]||'').trim()||null:null,mother_tag:fm.mother_tag!==-1?String(row[fm.mother_tag]||'').trim()||null:null,father_tag:fm.father_tag!==-1?String(row[fm.father_tag]||'').trim()||null:null,status:'active',farm_id:farm};
+    try{await sbClient.from('animals').upsert(animal,{onConflict:'ear_tag'});ok++;}catch(e){errors++;}
+    const pct=Math.round((i+1)/xlsxRows.length*100);
+    document.getElementById('xl-pb').style.width=pct+'%';
+    document.getElementById('xl-pt').textContent=`Обработано ${i+1} из ${xlsxRows.length}...`;
+  }
+  document.getElementById('xl-pt').textContent=`Готово! Добавлено в "${FARMS[farm]}": ${ok} · Пропущено: ${skip} · Ошибок: ${errors}`;
+  btn.textContent='Закрыть'; btn.onclick=()=>{closeModal();nav('animals');}; btn.disabled=false;
+  invAnMap();
+}
+
+// ── DELETE ROW (for other tables) ──
+async function delRow(table, id, backPage) {
+  if(!confirm('Удалить запись?'))return;
+  try{await sbClient.from(table).delete().eq('id',id);nav(backPage);}
+  catch(e){alert('Ошибка: '+e.message);}
+}
+
+// ============================================================
+// EXCEL EXPORT
+// ============================================================
+async function loadXlsxLib() {
+  return new Promise((res,rej) => {
+    if (window.XLSX) return res();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+async function exportAnimalsExcel() {
+  try {
+    await loadXlsxLib();
+    const {data:rows} = await sbClient.from('animals').select('*')
+      .eq('farm_id', currentFarm).neq('status','deleted').neq('status','external')
+      .order('ear_tag');
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const STATUS = {active:'Активна',sold:'Продана',dead:'Пала',disposed:'Выбыла'};
+    const data = [
+      ['Бирка','Кличка','Пол','Порода','Дата рождения','Возраст','Масса, кг','Масть','Статус','Бирка матери','Бирка отца','Примечания'],
+      ...(rows||[]).map(a=>[
+        a.ear_tag, a.name||'', a.sex==='М'?'Самец':'Самка', a.breed||'',
+        a.dob||'', ageStr(a.dob), a.weight_kg||'', a.color||'',
+        STATUS[a.status]||a.status, a.mother_tag||'', a.father_tag||'', a.notes||''
+      ])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,10,16,14,12,10,12,10,14,14,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Животные');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка экспорта: '+e.message); }
+}
+
+async function exportVetExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('vet_records')
+      .select('*,animals(ear_tag,name)').eq('farm_id',currentFarm).order('record_date',{ascending:false});
+    const TYPES = {vaccination:'Вакцинация',treatment:'Лечение',deworming:'Дегельминтизация',hoof:'Копыта',other:'Прочее'};
+    const STS = {done:'Выполнено',planned:'Запланировано',cancelled:'Отменено'};
+    const data = [
+      ['Бирка','Кличка','Дата','Тип','Процедура','Препарат','Доза','Ветеринар','Следующая','Статус','Примечания'],
+      ...(rows||[]).map(r=>[
+        r.animals?.ear_tag||'', r.animals?.name||'', r.record_date||'',
+        TYPES[r.type]||r.type, r.procedure_name||'', r.drug_name||'',
+        r.dose||'', r.vet_name||'', r.next_date||'', STS[r.status]||r.status, r.notes||''
+      ])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,12,16,20,16,10,16,12,12,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Вет. журнал');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_вет_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка экспорта: '+e.message); }
+}
+
+async function exportWeightsExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('weight_records')
+      .select('*,animals(ear_tag,name,breed)').eq('farm_id',currentFarm).order('weigh_date',{ascending:false});
+    const data = [
+      ['Бирка','Кличка','Порода','Дата','Вес, кг','Взвешивал','Примечания'],
+      ...(rows||[]).map(r=>[
+        r.animals?.ear_tag||'', r.animals?.name||'', r.animals?.breed||'',
+        r.weigh_date||'', r.weight_kg||'', r.weighed_by||'', r.notes||''
+      ])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,16,12,10,16,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Взвешивания');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_взвешивания_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка экспорта: '+e.message); }
+}
+async function exportArrivalExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('arrivals').select('*').eq('farm_id',currentFarm).order('arrival_date',{ascending:false});
+    const TYPES = {purchase:'Покупка',born:'Рождение',transfer:'Перевод',return:'Возврат'};
+    const data = [
+      ['Бирка','Кличка','Дата прибытия','Тип','Откуда','Цена, руб.','Примечания'],
+      ...(rows||[]).map(r=>[r.ear_tag||'',r.animal_name||'',r.arrival_date||'',TYPES[r.source_type]||r.source_type||'',r.source||'',r.price||'',r.notes||''])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,14,12,16,12,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Прибытие');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_прибытие_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+async function exportDepartureExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('departures').select('*').eq('farm_id',currentFarm).order('departure_date',{ascending:false});
+    const REASONS = {sale:'Продажа',slaughter:'Убой',death:'Падёж',transfer:'Перевод',loss:'Потеря'};
+    const data = [
+      ['Бирка','Кличка','Дата убытия','Причина','Куда/Кому','Цена, руб.','Примечания'],
+      ...(rows||[]).map(r=>[r.ear_tag||'',r.animal_name||'',r.departure_date||'',REASONS[r.reason]||r.reason||'',r.destination||'',r.price||'',r.notes||''])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,14,12,16,12,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Убытие');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_убытие_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+async function exportMatingExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('matings').select('*').eq('farm_id',currentFarm).order('mating_date',{ascending:false});
+    const data = [
+      ['Бирка матки','Кличка матки','Бирка барана','Кличка барана','Дата случки','Метод','Ожидаемый окот','Примечания'],
+      ...(rows||[]).map(r=>[r.female_tag||'',r.female_name||'',r.male_tag||'',r.male_name||'',r.mating_date||'',r.method||'',r.expected_birth||'',r.notes||''])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,12,14,14,12,14,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Случки');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_случки_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+async function exportUziExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('ultrasounds').select('*').eq('farm_id',currentFarm).order('exam_date',{ascending:false});
+    const RESULTS = {pregnant:'Суягная',empty:'Пустая',unsure:'Под вопросом'};
+    const data = [
+      ['Бирка','Кличка','Дата УЗИ','Результат','Плодов','Дней суягности','Ожидаемый окот','Ветеринар','Примечания'],
+      ...(rows||[]).map(r=>[r.ear_tag||'',r.name||'',r.exam_date||'',RESULTS[r.result]||r.result||'',r.fetus_count||'',r.gestation_days||'',r.expected_birth||'',r.vet_name||'',r.notes||''])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,12,14,10,14,14,16,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'УЗИ');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_узи_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+async function exportBirthExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('births').select('*').eq('farm_id',currentFarm).order('birth_date',{ascending:false});
+    const TYPES = {normal:'Нормальные',difficult:'Тяжёлые',cesarean:'Кесарево'};
+    const data = [
+      ['Бирка матки','Кличка матки','Дата окота','Рождено','Живых','Мертворождённых','Тип родов','Помощь вет.','Состояние матки','Примечания'],
+      ...(rows||[]).map(r=>[r.mother_tag||'',r.mother_name||'',r.birth_date||'',r.lambs_born||0,r.lambs_alive||0,r.lambs_dead||0,TYPES[r.birth_type]||r.birth_type||'',r.vet_assisted?'Да':'Нет',r.mother_condition||'',r.notes||''])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,12,10,10,14,14,12,14,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Окоты');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_окоты_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+async function exportMilkExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('milk_records').select('*').eq('farm_id',currentFarm).order('record_date',{ascending:false});
+    const data = [
+      ['Бирка','Кличка','Дата','Лактация №','Надой, л','Жир, %','Белок, %','Примечания'],
+      ...(rows||[]).map(r=>[r.ear_tag||'',r.name||'',r.record_date||'',r.lactation_no||'',r.volume_liters||'',r.fat_pct||'',r.protein_pct||'',r.notes||''])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,12,12,10,10,10,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Молочность');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_молочность_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+async function exportSelectionExcel() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const {data:rows} = await sbClient.from('selection_scores').select('*').eq('farm_id',currentFarm).order('score_date',{ascending:false});
+    const data = [
+      ['Бирка','Кличка','Дата оценки','Телосложение','Продуктивность','Здоровье','Итого баллов','Оценщик','Примечания'],
+      ...(rows||[]).map(r=>[r.ear_tag||'',r.name||'',r.score_date||'',r.body_score||'',r.productivity_score||'',r.health_score||'',r.total_score||'',r.evaluator||'',r.notes||''])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [12,14,12,14,14,12,14,16,20].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Племенной отбор');
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_отбор_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
+// ============================================================
+// UNIVERSAL SECTION IMPORT
+// ============================================================
+const SECTION_FIELDS = {
+  arrivals: {
+    label: 'Прибытие',
+    fields: [
+      {key:'ear_tag', label:'Бирка *', required:true},
+      {key:'animal_name', label:'Кличка'},
+      {key:'arrival_date', label:'Дата прибытия'},
+      {key:'source_type', label:'Тип (purchase/born/transfer)'},
+      {key:'source', label:'Откуда'},
+      {key:'price', label:'Цена, руб.'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'arrivals',
+    required: 'ear_tag',
+  },
+  departures: {
+    label: 'Убытие',
+    fields: [
+      {key:'ear_tag', label:'Бирка *', required:true},
+      {key:'animal_name', label:'Кличка'},
+      {key:'departure_date', label:'Дата убытия'},
+      {key:'reason', label:'Причина (sale/slaughter/death/transfer)'},
+      {key:'destination', label:'Куда/Кому'},
+      {key:'price', label:'Цена, руб.'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'departures',
+    required: 'ear_tag',
+  },
+  matings: {
+    label: 'Случки',
+    fields: [
+      {key:'female_tag', label:'Бирка матки *', required:true},
+      {key:'female_name', label:'Кличка матки'},
+      {key:'male_tag', label:'Бирка барана'},
+      {key:'male_name', label:'Кличка барана'},
+      {key:'mating_date', label:'Дата случки'},
+      {key:'method', label:'Метод'},
+      {key:'expected_birth', label:'Ожидаемый окот'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'matings',
+    required: 'female_tag',
+  },
+  uzi: {
+    label: 'УЗИ',
+    fields: [
+      {key:'ear_tag', label:'Бирка *', required:true},
+      {key:'name', label:'Кличка'},
+      {key:'exam_date', label:'Дата УЗИ'},
+      {key:'result', label:'Результат (pregnant/empty/unsure)'},
+      {key:'fetus_count', label:'Количество плодов'},
+      {key:'gestation_days', label:'Дней суягности'},
+      {key:'expected_birth', label:'Ожидаемый окот'},
+      {key:'vet_name', label:'Ветеринар'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'ultrasounds',
+    required: 'ear_tag',
+  },
+  births: {
+    label: 'Окоты',
+    fields: [
+      {key:'mother_tag', label:'Бирка матки *', required:true},
+      {key:'mother_name', label:'Кличка матки'},
+      {key:'birth_date', label:'Дата окота'},
+      {key:'lambs_born', label:'Рождено'},
+      {key:'lambs_alive', label:'Живых'},
+      {key:'lambs_dead', label:'Мертворождённых'},
+      {key:'birth_type', label:'Тип (normal/difficult/cesarean)'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'births',
+    required: 'mother_tag',
+  },
+  milk: {
+    label: 'Молочность',
+    fields: [
+      {key:'ear_tag', label:'Бирка *', required:true},
+      {key:'name', label:'Кличка'},
+      {key:'record_date', label:'Дата записи'},
+      {key:'lactation_no', label:'Лактация №'},
+      {key:'volume_liters', label:'Надой, л'},
+      {key:'fat_pct', label:'Жир, %'},
+      {key:'protein_pct', label:'Белок, %'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'milk_records',
+    required: 'ear_tag',
+  },
+  weights: {
+    label: 'Взвешивания',
+    fields: [
+      {key:'ear_tag', label:'Бирка *', required:true},
+      {key:'weigh_date', label:'Дата взвешивания'},
+      {key:'weight_kg', label:'Вес, кг'},
+      {key:'weighed_by', label:'Взвешивал'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'weight_records',
+    required: 'ear_tag',
+    needsAnimalId: true,
+  },
+  vet: {
+    label: 'Вет. журнал',
+    fields: [
+      {key:'ear_tag', label:'Бирка *', required:true},
+      {key:'record_date', label:'Дата'},
+      {key:'type', label:'Тип (vaccination/treatment/deworming/hoof/other)'},
+      {key:'procedure_name', label:'Процедура / Диагноз'},
+      {key:'drug_name', label:'Препарат'},
+      {key:'dose', label:'Доза'},
+      {key:'vet_name', label:'Ветеринар'},
+      {key:'status', label:'Статус (done/planned/cancelled)'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'vet_records',
+    required: 'ear_tag',
+    needsAnimalId: true,
+  },
+  selection: {
+    label: 'Племенной отбор',
+    fields: [
+      {key:'ear_tag', label:'Бирка *', required:true},
+      {key:'name', label:'Кличка'},
+      {key:'score_date', label:'Дата оценки'},
+      {key:'body_score', label:'Телосложение'},
+      {key:'productivity_score', label:'Продуктивность'},
+      {key:'health_score', label:'Здоровье'},
+      {key:'total_score', label:'Итого баллов'},
+      {key:'evaluator', label:'Оценщик'},
+      {key:'notes', label:'Примечания'},
+    ],
+    table: 'selection_scores',
+    required: 'ear_tag',
+  },
+};
+
+let _sectionImportRows = [], _sectionImportHeaders = [], _sectionImportKey = '';
+
+function openSectionImport(section) {
+  const cfg = SECTION_FIELDS[section];
+  if (!cfg) return alert('Неизвестный раздел');
+  _sectionImportKey = section;
+  openModal(`<div class="modal">
+    <div class="modal-head"><div class="modal-title">Импорт — ${cfg.label}</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Загрузи файл .xlsx — система сопоставит колонки автоматически.</p>
+    <div id="si-drop" style="border:1.5px dashed var(--border2);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;color:var(--text2)"
+      onclick="document.getElementById('si-file').click()"
+      ondragover="event.preventDefault();this.style.borderColor='var(--green)'"
+      ondragleave="this.style.borderColor=''"
+      ondrop="event.preventDefault();this.style.borderColor='';siDrop(event)">
+      <div style="font-size:28px;margin-bottom:6px;pointer-events:none">📂</div>
+      <div style="font-size:13px;pointer-events:none">Нажми или перетащи .xlsx файл</div>
+    </div>
+    <input type="file" id="si-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="siFile(this)">
+    <div id="si-mapping" style="display:none;margin-top:14px"></div>
+    <div id="si-progress" style="display:none;margin-top:10px">
+      <div id="si-pt" style="font-size:13px;color:var(--text2);margin-bottom:4px"></div>
+      <div style="background:var(--surface2);border-radius:20px;height:7px;overflow:hidden"><div id="si-pb" style="height:100%;background:var(--green);border-radius:20px;width:0%"></div></div>
+    </div>
+    <div class="modal-footer" id="si-footer" style="display:none">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" id="si-btn" onclick="runSectionImport()">Импортировать</button>
+    </div>
+  </div>`);
+}
+
+function siDrop(e) { const f=e.dataTransfer?.files?.[0]; if(f) siProcess(f); }
+function siFile(inp) { const f=inp.files[0]; if(f) siProcess(f); }
+
+async function siProcess(file) {
+  await loadXlsxLib();
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const wb = XLSX.read(e.target.result, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    if (data.length < 2) return alert('Файл пустой');
+    _sectionImportHeaders = data[0].map(String);
+    _sectionImportRows = data.slice(1).filter(r=>r.some(c=>c!==''));
+    const dz = document.getElementById('si-drop');
+    if (dz) dz.innerHTML = `<div style="font-size:20px;margin-bottom:6px">✅</div><div style="font-size:13px;font-weight:500">${file.name}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Строк: ${_sectionImportRows.length}</div>`;
+    renderSiMapping();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderSiMapping() {
+  const cfg = SECTION_FIELDS[_sectionImportKey];
+  const opts = ['— не импортировать —', ..._sectionImportHeaders].map(h=>`<option>${h}</option>`).join('');
+  document.getElementById('si-mapping').style.display = 'block';
+  document.getElementById('si-mapping').innerHTML =
+    cfg.fields.map(f=>`<div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:center;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--text2)">${f.label}</span>
+      <select id="sim-${f.key}" style="padding:5px 8px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:12px">${opts}</select>
+    </div>`).join('');
+  // Auto-match
+  const autoKw = {
+    ear_tag:['бирка','номер','tag'], animal_name:['кличка','имя','name'],
+    female_tag:['матка','самка','мать'], male_tag:['баран','самец','отец'],
+    arrival_date:['прибытие','arrival'], departure_date:['убытие','departure'],
+    mating_date:['случка','mating'], exam_date:['узи','exam'],
+    birth_date:['окот','рождение','birth'], record_date:['дата','date'],
+    weigh_date:['взвешивание','weigh'], mother_tag:['матка','мать'],
+    weight_kg:['вес','масса','weight'], volume_liters:['надой','литр','volume'],
+    fat_pct:['жир','fat'], protein_pct:['белок','protein'],
+    score_date:['оценка','score'], procedure_name:['процедура','диагноз'],
+    drug_name:['препарат','вакцина','drug'], lambs_born:['рождено','born'],
+    lambs_alive:['живых','alive'], source:['откуда','источник'],
+  };
+  cfg.fields.forEach(f => {
+    const sel = document.getElementById('sim-'+f.key);
+    const kws = autoKw[f.key]||[f.key];
+    const match = _sectionImportHeaders.find(h => kws.some(k=>h.toLowerCase().includes(k)));
+    if (match && sel) sel.value = match;
+  });
+  document.getElementById('si-footer').style.display = 'flex';
+}
+
+async function runSectionImport() {
+  const cfg = SECTION_FIELDS[_sectionImportKey];
+  const gm = key => {
+    const v = document.getElementById('sim-'+key)?.value;
+    return (v && v !== '— не импортировать —') ? _sectionImportHeaders.indexOf(v) : -1;
+  };
+  const reqIdx = gm(cfg.required);
+  if (reqIdx === -1) return alert('Укажи обязательную колонку: ' + cfg.fields.find(f=>f.key===cfg.required)?.label);
+
+  const btn = document.getElementById('si-btn');
+  btn.disabled=true; btn.textContent='Импорт...';
+  document.getElementById('si-progress').style.display='block';
+
+  // Build animal map if needed
+  let anMap = {};
+  if (cfg.needsAnimalId) {
+    const {data:ans} = await sbClient.from('animals').select('id,ear_tag').eq('farm_id',currentFarm);
+    (ans||[]).forEach(a => anMap[a.ear_tag]=a.id);
+  }
+
+  let ok=0, skip=0, errors=0;
+  const total = _sectionImportRows.length;
+
+  for (let i=0; i<total; i++) {
+    const row = _sectionImportRows[i];
+    const reqVal = String(row[reqIdx]||'').trim();
+    if (!reqVal) { skip++; continue; }
+
+    const record = {farm_id: currentFarm};
+    cfg.fields.forEach(f => {
+      const idx = gm(f.key);
+      if (idx !== -1 && row[idx] !== '') {
+        let val = row[idx];
+        // Parse dates
+        if (f.key.includes('date') || f.key.includes('birth') || f.key.includes('_at')) {
+          if (typeof val === 'number') {
+            val = new Date(Math.round((val-25569)*86400000)).toISOString().split('T')[0];
+          } else {
+            const p = String(val).split(/[.\-\/]/);
+            if (p.length===3) {
+              const [a,b,c]=p;
+              val = c.length===4?`${c}-${b.padStart(2,'0')}-${a.padStart(2,'0')}`:`${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;
+            }
+          }
+        }
+        // Parse numbers
+        if (['weight_kg','volume_liters','fat_pct','protein_pct','fetus_count','gestation_days','lambs_born','lambs_alive','lambs_dead','price','body_score','productivity_score','health_score','total_score','lactation_no'].includes(f.key)) {
+          val = parseFloat(val)||null;
+        }
+        record[f.key] = val===''?null:val;
+      }
+    });
+
+    // Add animal_id if needed
+    if (cfg.needsAnimalId) {
+      const tag = record['ear_tag'] || reqVal;
+      const anId = anMap[tag];
+      if (!anId) { errors++; continue; }
+      record['animal_id'] = anId;
+      delete record['ear_tag'];
+    }
+
+    try {
+      await sbClient.from(cfg.table).insert(record);
+      ok++;
+    } catch(e) { errors++; }
+
+    const pct = Math.round((i+1)/total*100);
+    document.getElementById('si-pb').style.width = pct+'%';
+    document.getElementById('si-pt').textContent = `Обработано ${i+1} из ${total}...`;
+  }
+
+  document.getElementById('si-pt').textContent = `Готово! Добавлено: ${ok} · Пропущено: ${skip} · Ошибок: ${errors}`;
+  btn.textContent='Закрыть';
+  btn.onclick=()=>{closeModal(); nav(_sectionImportKey==='uzi'?'ultrasounds':_sectionImportKey);};
+  btn.disabled=false;
+}
+
+async function exportFullReport() {
+  try {
+    await loadXlsxLib();
+    const farmName = FARMS[currentFarm]||currentFarm;
+    const btn = document.querySelector('[onclick="exportFullReport()"]');
+    if (btn) { btn.disabled=true; btn.textContent='⏳ Формируется...'; }
+
+    // Fetch all data in parallel
+    const [animals, arrivals, departures, matings, uzis, births, milk, vet, weights] = await Promise.all([
+      sbClient.from('animals').select('*').eq('farm_id',currentFarm).neq('status','deleted').neq('status','external').order('ear_tag'),
+      sbClient.from('arrivals').select('*').eq('farm_id',currentFarm).order('arrival_date',{ascending:false}),
+      sbClient.from('departures').select('*').eq('farm_id',currentFarm).order('departure_date',{ascending:false}),
+      sbClient.from('matings').select('*').eq('farm_id',currentFarm).order('mating_date',{ascending:false}),
+      sbClient.from('ultrasounds').select('*').eq('farm_id',currentFarm).order('exam_date',{ascending:false}),
+      sbClient.from('births').select('*').eq('farm_id',currentFarm).order('birth_date',{ascending:false}),
+      sbClient.from('milk_records').select('*').eq('farm_id',currentFarm).order('record_date',{ascending:false}),
+      sbClient.from('vet_records').select('*,animals(ear_tag,name)').eq('farm_id',currentFarm).order('record_date',{ascending:false}),
+      sbClient.from('weight_records').select('*,animals(ear_tag,name)').eq('farm_id',currentFarm).order('weigh_date',{ascending:false}),
+    ]);
+
+    const wb = XLSX.utils.book_new();
+    const STATUS = {active:'Активна',sold:'Продана',dead:'Пала',disposed:'Выбыла'};
+    const TYPES_A = {purchase:'Покупка',born:'Рождение',transfer:'Перевод',return:'Возврат'};
+    const REASONS = {sale:'Продажа',slaughter:'Убой',death:'Падёж',transfer:'Перевод',loss:'Потеря'};
+    const UZI_R = {pregnant:'Суягная',empty:'Пустая',unsure:'Под вопросом'};
+    const BIRTH_T = {normal:'Нормальные',difficult:'Тяжёлые',cesarean:'Кесарево'};
+    const VET_T = {vaccination:'Вакцинация',treatment:'Лечение',deworming:'Дегельминтизация',hoof:'Копыта',other:'Прочее'};
+    const VET_S = {done:'Выполнено',planned:'Запланировано',cancelled:'Отменено'};
+
+    const addSheet = (name, headers, rows) => {
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      ws['!cols'] = headers.map(()=>({wch:14}));
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    };
+
+    addSheet('Животные',
+      ['Бирка','Кличка','Пол','Порода','Дата рожд.','Масса, кг','Статус','Бирка матери','Бирка отца'],
+      (animals.data||[]).map(a=>[a.ear_tag,a.name||'',a.sex==='М'?'Самец':'Самка',a.breed||'',a.dob||'',a.weight_kg||'',STATUS[a.status]||a.status,a.mother_tag||'',a.father_tag||'']));
+
+    addSheet('Прибытие',
+      ['Бирка','Кличка','Дата','Тип','Откуда','Цена'],
+      (arrivals.data||[]).map(r=>[r.ear_tag||'',r.animal_name||'',r.arrival_date||'',TYPES_A[r.source_type]||r.source_type||'',r.source||'',r.price||'']));
+
+    addSheet('Убытие',
+      ['Бирка','Кличка','Дата','Причина','Куда','Цена'],
+      (departures.data||[]).map(r=>[r.ear_tag||'',r.animal_name||'',r.departure_date||'',REASONS[r.reason]||r.reason||'',r.destination||'',r.price||'']));
+
+    addSheet('Случки',
+      ['Бирка матки','Бирка барана','Дата','Метод','Ожид. окот'],
+      (matings.data||[]).map(r=>[r.female_tag||'',r.male_tag||'',r.mating_date||'',r.method||'',r.expected_birth||'']));
+
+    addSheet('УЗИ',
+      ['Бирка','Дата','Результат','Плодов','Ожид. окот'],
+      (uzis.data||[]).map(r=>[r.ear_tag||'',r.exam_date||'',UZI_R[r.result]||r.result||'',r.fetus_count||'',r.expected_birth||'']));
+
+    addSheet('Окоты',
+      ['Бирка матки','Дата','Рождено','Живых','Тип родов'],
+      (births.data||[]).map(r=>[r.mother_tag||'',r.birth_date||'',r.lambs_born||0,r.lambs_alive||0,BIRTH_T[r.birth_type]||'']));
+
+    addSheet('Молочность',
+      ['Бирка','Дата','Лактация','Надой, л','Жир %','Белок %'],
+      (milk.data||[]).map(r=>[r.ear_tag||'',r.record_date||'',r.lactation_no||'',r.volume_liters||'',r.fat_pct||'',r.protein_pct||'']));
+
+    addSheet('Вет. журнал',
+      ['Бирка','Кличка','Дата','Тип','Процедура','Препарат','Статус'],
+      (vet.data||[]).map(r=>[r.animals?.ear_tag||'',r.animals?.name||'',r.record_date||'',VET_T[r.type]||r.type||'',r.procedure_name||'',r.drug_name||'',VET_S[r.status]||'']));
+
+    addSheet('Взвешивания',
+      ['Бирка','Кличка','Дата','Вес, кг'],
+      (weights.data||[]).map(r=>[r.animals?.ear_tag||'',r.animals?.name||'',r.weigh_date||'',r.weight_kg||'']));
+
+    XLSX.writeFile(wb, `АгроПлем_${farmName}_полный_отчёт_${new Date().toISOString().split('T')[0]}.xlsx`);
+    if (btn) { btn.disabled=false; btn.textContent='📊 Полный отчёт Excel'; }
+  } catch(e) {
+    alert('Ошибка: '+e.message);
+    const btn = document.querySelector('[onclick="exportFullReport()"]');
+    if (btn) { btn.disabled=false; btn.textContent='📊 Полный отчёт Excel'; }
+  }
+}
+
+</script>
+</body>
+</html>
