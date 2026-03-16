@@ -322,6 +322,10 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--gr
           <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2h6l2 4H5z"/><path d="M5 6l-1.5 11h13L15 6"/></svg>
           Молочность
         </div>
+        <div class="nav-item" onclick="nav('weights')" id="nav-weights">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.5 3h3l-2.5 2 1 3L10 8.5 7 10l1-3L5.5 5h3z"/><path d="M4 17h12M6 17v-4M10 17v-6M14 17v-3"/></svg>
+          Взвешивания
+        </div>
         <div class="nav-item" onclick="nav('selection')" id="nav-selection">
           <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.8 5.5H18l-4.9 3.5 1.9 5.7L10 13.2 5 16.7l1.9-5.7L2 7.5h6.2z"/></svg>
           Племенной отбор
@@ -411,6 +415,9 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--gr
     </div>
     <div class="bot-sheet-item" onclick="nav('milk');closeBotSheet()">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2h6l2 4H5z"/><path d="M5 6l-1.5 11h13L15 6"/></svg> Молочность
+    </div>
+    <div class="bot-sheet-item" onclick="nav('weights');closeBotSheet()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.5 3h3l-2.5 2 1 3L10 8.5 7 10l1-3L5.5 5h3z"/><path d="M4 17h12M6 17v-4M10 17v-6M14 17v-3"/></svg> Взвешивания
     </div>
     <div class="bot-sheet-item" onclick="nav('selection');closeBotSheet()">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.8 5.5H18l-4.9 3.5 1.9 5.7L10 13.2 5 16.7l1.9-5.7L2 7.5h6.2z"/></svg> Племенной отбор
@@ -526,7 +533,7 @@ function startApp() {
 // ============================================================
 // DB HELPERS
 // ============================================================
-const FARM_TABLES = ['animals','arrivals','departures','matings','ultrasounds','births','milk_records','selection_scores','vet_records'];
+const FARM_TABLES = ['animals','arrivals','departures','matings','ultrasounds','births','milk_records','selection_scores','vet_records','weight_records'];
 
 async function dbFetch(table, options={}) {
   if (demoMode) {
@@ -574,7 +581,7 @@ function nav(page) {
 function renderPage(page) {
   const el = document.getElementById('main');
   el.innerHTML = '<div class="loading-row"><div class="spinner"></div></div>';
-  const handlers = {animals, arrivals, departures, matings, ultrasounds, births, milk, selection, analytics, vet};
+  const handlers = {animals, arrivals, departures, matings, ultrasounds, births, milk, selection, analytics, vet, weights};
   if (handlers[page]) handlers[page]();
 }
 
@@ -1584,6 +1591,197 @@ async function saveSelection() {
 // ============================================================
 // ANALYTICS
 // ============================================================
+// ============================================================
+// WEIGHTS JOURNAL
+// ============================================================
+async function weights() {
+  try {
+    const {data:rows, error} = await sbClient.from('weight_records')
+      .select('*').eq('farm_id', currentFarm).order('weigh_date', {ascending:false});
+    if (error) throw error;
+    const {data:ans} = await sbClient.from('animals').select('id,ear_tag,name,breed,dob').eq('farm_id', currentFarm);
+    const anMap = {}; (ans||[]).forEach(a => anMap[a.id] = a);
+    const wr = rows||[];
+
+    const avgGain = wr.length > 1 ? (wr.reduce((s,r)=>s+Number(r.weight_kg),0)/wr.length).toFixed(1) : '—';
+    const animals_counted = [...new Set(wr.map(r=>r.animal_id))].length;
+
+    setMain(`
+<div class="page-header"><h1>Взвешивания — ${FARMS[currentFarm]}</h1><p>Динамика живой массы, графики роста</p></div>
+<div class="stats-grid">
+  <div class="stat"><div class="stat-label">Всего взвешиваний</div><div class="stat-value">${wr.length}</div></div>
+  <div class="stat"><div class="stat-label">Животных охвачено</div><div class="stat-value blue">${animals_counted}</div></div>
+  <div class="stat"><div class="stat-label">Средний вес, кг</div><div class="stat-value green">${avgGain}</div></div>
+  <div class="stat"><div class="stat-label">Последнее</div><div class="stat-value amber">${wr[0]?fmtDate(wr[0].weigh_date):'—'}</div></div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Журнал взвешиваний</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="w-search" type="text" placeholder="🔍 Поиск по бирке..." oninput="filterWeights()"
+        style="padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:12px;width:160px">
+      <button class="btn btn-primary btn-sm" onclick="openWeightForm()">+ Добавить взвешивание</button>
+    </div>
+  </div>
+  <div class="table-wrap"><table id="w-table">
+    <thead><tr><th>Животное</th><th>Дата</th><th>Вес, кг</th><th>Прирост</th><th>Возраст</th><th>Примечания</th><th></th></tr></thead>
+    <tbody id="w-tbody">${renderWeightRows(wr, anMap)}</tbody>
+  </table></div>
+</div>`);
+
+    window._weightRows = wr;
+    window._weightAnMap = anMap;
+  } catch(e) {
+    setMain(`<div class="alert alert-warning">Ошибка: ${e.message}</div>`);
+  }
+}
+
+function renderWeightRows(rows, anMap) {
+  if (!rows||rows.length===0) return '<tr><td colspan="7" class="empty">Записей нет — добавьте первое взвешивание</td></tr>';
+  // Calculate gain vs previous weighing per animal
+  const byAnimal = {};
+  rows.forEach(r => {
+    if (!byAnimal[r.animal_id]) byAnimal[r.animal_id] = [];
+    byAnimal[r.animal_id].push(r);
+  });
+  return rows.map(r => {
+    const a = anMap[r.animal_id]||{};
+    const anRecs = (byAnimal[r.animal_id]||[]).sort((a,b)=>new Date(a.weigh_date)-new Date(b.weigh_date));
+    const idx = anRecs.findIndex(x=>x.id===r.id);
+    const prev = idx > 0 ? anRecs[idx-1] : null;
+    const gain = prev ? (Number(r.weight_kg) - Number(prev.weight_kg)).toFixed(1) : null;
+    const gainHtml = gain !== null
+      ? `<span style="color:${Number(gain)>=0?'var(--green)':'var(--red)'};font-weight:500">${Number(gain)>=0?'+':''}${gain} кг</span>`
+      : '—';
+    return `<tr>
+      <td><b>${a.name||a.ear_tag||'—'}</b><br><span style="font-size:10px;color:var(--text2);font-family:var(--mono)">${a.ear_tag||''}</span></td>
+      <td>${fmtDate(r.weigh_date)}</td>
+      <td style="font-weight:600;font-size:15px">${Number(r.weight_kg).toFixed(1)}</td>
+      <td>${gainHtml}</td>
+      <td style="color:var(--text2)">${a.dob?ageStr(r.weigh_date&&a.dob?a.dob:null):'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${r.notes||'—'}</td>
+      <td style="display:flex;gap:5px">
+        <button class="btn btn-sm" onclick="showWeightChart('${r.animal_id}')">График</button>
+        <button class="btn btn-sm btn-danger" onclick="delRow('weight_records','${r.id}','weights')">Удалить</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterWeights() {
+  const q = (document.getElementById('w-search')?.value||'').toLowerCase();
+  const rows = window._weightRows||[];
+  const anMap = window._weightAnMap||{};
+  const filtered = q ? rows.filter(r => {
+    const a = anMap[r.animal_id]||{};
+    return `${a.ear_tag||''} ${a.name||''}`.toLowerCase().includes(q);
+  }) : rows;
+  const tb = document.getElementById('w-tbody');
+  if (tb) tb.innerHTML = renderWeightRows(filtered, anMap);
+}
+
+async function showWeightChart(animalId) {
+  const a = (window._weightAnMap||{})[animalId]||{};
+  const rows = (window._weightRows||[])
+    .filter(r=>r.animal_id===animalId)
+    .sort((a,b)=>new Date(a.weigh_date)-new Date(b.weigh_date));
+
+  if (rows.length < 2) {
+    alert('Нужно минимум 2 взвешивания для графика');
+    return;
+  }
+
+  const labels = rows.map(r=>fmtDate(r.weigh_date));
+  const data = rows.map(r=>Number(r.weight_kg));
+  const minW = Math.floor(Math.min(...data) * 0.9);
+  const maxW = Math.ceil(Math.max(...data) * 1.05);
+  const w = 480, h = 220, pad = {l:44,r:16,t:20,b:40};
+  const cw = w-pad.l-pad.r, ch = h-pad.t-pad.b;
+
+  const xStep = cw/(rows.length-1);
+  const yScale = v => ch - (v-minW)/(maxW-minW)*ch;
+
+  const points = rows.map((_,i) => `${pad.l+i*xStep},${pad.t+yScale(data[i])}`).join(' ');
+  const areaPoints = `${pad.l},${pad.t+ch} ${points} ${pad.l+(rows.length-1)*xStep},${pad.t+ch}`;
+
+  const dots = rows.map((r,i) => `
+    <circle cx="${pad.l+i*xStep}" cy="${pad.t+yScale(data[i])}" r="5" fill="var(--green)" stroke="var(--surface)" stroke-width="2"/>
+    <text x="${pad.l+i*xStep}" y="${pad.t+yScale(data[i])-10}" text-anchor="middle" font-size="10" fill="var(--text2)">${data[i].toFixed(1)}</text>
+  `).join('');
+
+  const xLabels = rows.map((r,i) => `
+    <text x="${pad.l+i*xStep}" y="${h-8}" text-anchor="middle" font-size="9" fill="var(--text3)">${labels[i]}</text>
+  `).join('');
+
+  const yTicks = 4;
+  const yLabels = Array.from({length:yTicks+1},(_,i)=>{
+    const v = minW + (maxW-minW)*i/yTicks;
+    const y = pad.t + ch - ch*i/yTicks;
+    return `<text x="${pad.l-6}" y="${y+4}" text-anchor="end" font-size="10" fill="var(--text3)">${v.toFixed(0)}</text>
+    <line x1="${pad.l}" y1="${y}" x2="${pad.l+cw}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>`;
+  }).join('');
+
+  openModal(`<div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <div class="modal-title">График роста — ${a.name||a.ear_tag||'—'}</div>
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">
+      Взвешиваний: ${rows.length} · Начальный вес: ${data[0]} кг · Текущий: ${data[data.length-1]} кг · 
+      Прирост: <b style="color:var(--green)">+${(data[data.length-1]-data[0]).toFixed(1)} кг</b>
+    </div>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;background:var(--surface2);border-radius:var(--radius)">
+      ${yLabels}
+      <polygon points="${areaPoints}" fill="var(--green)" opacity="0.12"/>
+      <polyline points="${points}" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linejoin="round"/>
+      ${dots}
+      ${xLabels}
+    </svg>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Закрыть</button>
+      <button class="btn btn-primary" onclick="closeModal();openWeightForm('${animalId}')">+ Добавить взвешивание</button>
+    </div>
+  </div>`);
+}
+
+function openWeightForm(preAnimalId='') {
+  openModal(`<div class="modal" style="max-width:420px">
+    <div class="modal-head"><div class="modal-title">Новое взвешивание</div><button class="close-btn" onclick="closeModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Бирка животного *</label><input id="wf-tag" placeholder="МО-0042" value="${preAnimalId?(window._weightAnMap||{})[preAnimalId]?.ear_tag||'':''}" ></div>
+      <div class="form-group"><label>Дата взвешивания *</label><input type="date" id="wf-date" value="${new Date().toISOString().split('T')[0]}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Живая масса, кг *</label><input type="number" step="0.1" id="wf-weight" placeholder="42.5"></div>
+      <div class="form-group"><label>Кто взвешивал</label><input id="wf-who" placeholder="Иванов И.И."></div>
+    </div>
+    <div class="form-group" style="margin-top:4px"><label>Примечания</label><textarea id="wf-notes" style="min-height:50px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveWeight()">Сохранить</button>
+    </div>
+  </div>`);
+}
+
+async function saveWeight() {
+  const tag = document.getElementById('wf-tag').value.trim();
+  const wt = document.getElementById('wf-weight').value;
+  if (!tag||!wt) return alert('Заполните бирку и вес');
+  const {data:an, error} = await sbClient.from('animals').select('id').eq('ear_tag',tag).single();
+  if (error||!an) return alert('Животное "'+tag+'" не найдено');
+  try {
+    await sbClient.from('weight_records').insert({
+      animal_id: an.id,
+      farm_id: currentFarm,
+      weigh_date: document.getElementById('wf-date').value,
+      weight_kg: parseFloat(wt),
+      weighed_by: document.getElementById('wf-who').value.trim()||null,
+      notes: document.getElementById('wf-notes').value.trim()||null,
+    });
+    closeModal(); nav('weights');
+  } catch(e) { alert('Ошибка: '+e.message); }
+}
+
 async function analytics() {
   const [anRows, matRows, birthRows, uziRows] = await Promise.all([
     dbFetch('animals'), dbFetch('matings'), dbFetch('births'), dbFetch('ultrasounds')
